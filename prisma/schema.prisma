@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id              String   @id @default(cuid())
+  name            String
+  address         String
+  phone           String
+  email           String   @unique
+  taxId           String   @unique
+  fiscalYearStart DateTime
+  fiscalYearEnd   DateTime
+  currency        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  users         UserCompany[]
+  accounts      Account[]
+  transactions  Transaction[]
+  invoices      Invoice[]
+  bills         Bill[]
+  vendors       Vendor[]
+  customers     Customer[]
+  items         Item[]
+  payrolls      Payroll[]
+  auditLogs     AuditLog[]
+  taxCodes      TaxCode[]
+  fixedAssets   FixedAsset[]
+  leases        Lease[]
+  contracts     Contract[]
+  exchangeRates ExchangeRate[]
+
+  // Custom attributes
+  Employee Employee[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  companies UserCompany[]
+  auditLogs AuditLog[]
+}
+
+model UserCompany {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  companyId   String
+  company     Company     @relation(fields: [companyId], references: [id])
+  role        UserRole
+  accessLevel AccessLevel // Defines if the user has full access, or limited access (e.g., only invoicing)
+  permissions Json // Stores custom permissions for the user in this company
+}
+
+model Account {
+  id             String          @id @default(cuid())
+  name           String
+  type           AccountType
+  subtype        AccountSubtype?
+  number         String          @unique
+  balance        Float           @default(0)
+  openingBalance Float           @default(0)
+  currency       String
+  parentId       String?
+  parent         Account?        @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children       Account[]       @relation("AccountHierarchy")
+  companyId      String
+  company        Company         @relation(fields: [companyId], references: [id])
+  transactions   Transaction[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  TransactionLineItem TransactionLineItem[]
+}
+
+model Transaction {
+  id           String   @id @default(cuid())
+  date         DateTime
+  description  String
+  totalAmount  Float
+  currency     String
+  exchangeRate Float?
+  accountId    String
+  account      Account? @relation(fields: [accountId], references: [id])
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  recurring    Boolean? @default(false)
+  createdBy    String
+  updatedBy    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  lineItems          TransactionLineItem[]
+  taxes              TransactionTax[]
+  exchangeRateId     String?
+  exchangeRateRecord ExchangeRate?         @relation(fields: [exchangeRateId], references: [id])
+}
+
+model TransactionLineItem {
+  id            String      @id @default(cuid())
+  description   String // Description of the line item
+  amount        Float // Amount for the line item
+  debit         Boolean // Whether this line item is a debit (true) or credit (false)
+  accountId     String // Account involved in this line item
+  account       Account     @relation(fields: [accountId], references: [id])
+  transactionId String // The transaction this line item belongs to
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+}
+
+model TransactionTax {
+  id            String      @id @default(cuid())
+  amount        Float // Amount of tax applied to the transaction
+  taxCodeId     String // Tax code applied
+  taxCode       TaxCode     @relation(fields: [taxCodeId], references: [id])
+  transactionId String // The transaction this tax is related to
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+}
+
+model TaxCode {
+  id          String   @id @default(cuid())
+  name        String
+  rate        Float // The tax rate (e.g., 0.05 for 5%)
+  description String?
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactionTaxes TransactionTax[]
+  invoiceTaxes     InvoiceTax[]
+  billTaxes        BillTax[]
+}
+
+model ExchangeRate {
+  id           String        @id @default(cuid())
+  fromCurrency String // The currency being exchanged from
+  toCurrency   String // The currency being exchanged to
+  rate         Float // The exchange rate value
+  date         DateTime // Date of the exchange rate
+  transactions Transaction[] // Transactions that use this exchange rate
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  Company      Company?      @relation(fields: [companyId], references: [id])
+  companyId    String?
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  amount        Float
+  dueDate       DateTime
+  paid          Boolean  @default(false)
+  currency      String
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+
+  // Relations
+  taxes     InvoiceTax[]
+  lineItems InvoiceLineItem[]
+  recurring Boolean           @default(false) // Indicates if this is a recurring invoice
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  createdBy String
+  updatedBy String
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  description String
+  quantity    Int
+  unitPrice   Float
+  amount      Float
+  itemId      String?
+  item        Item?   @relation(fields: [itemId], references: [id])
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model InvoiceTax {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  taxCodeId String
+  taxCode   TaxCode @relation(fields: [taxCodeId], references: [id])
+  amount    Float
+}
+
+model Bill {
+  id         String   @id @default(cuid())
+  billNumber String   @unique
+  amount     Float
+  dueDate    DateTime
+  paid       Boolean  @default(false)
+  currency   String
+  vendorId   String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id])
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+
+  lineItems BillLineItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  BillTax   BillTax[]
+}
+
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  phone     String
+  email     String
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  bills     Bill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BillLineItem {
+  id          String @id @default(cuid())
+  description String
+  quantity    Int
+  unitPrice   Float
+  amount      Float
+  itemId      String
+  billId      String
+  bill        Bill   @relation(fields: [billId], references: [id])
+  item        Item   @relation(fields: [itemId], references: [id])
+}
+
+model BillTax {
+  id        String  @id @default(cuid())
+  billId    String
+  bill      Bill    @relation(fields: [billId], references: [id])
+  taxCodeId String
+  taxCode   TaxCode @relation(fields: [taxCodeId], references: [id])
+  amount    Float
+}
+
+model Customer {
+  id        String     @id @default(cuid())
+  name      String
+  address   String? // Make this field optional
+  phone     String? // Make this field optional
+  email     String
+  companyId String
+  company   Company    @relation(fields: [companyId], references: [id])
+  invoices  Invoice[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  Contract  Contract[]
+}
+
+model Item {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  unitPrice      Float
+  quantityOnHand Int
+  sku            String   @unique
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  invoiceItems InvoiceLineItem[]
+  billItems    BillLineItem[]
+}
+
+model Payroll {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  grossSalary Float
+  netSalary   Float
+  deductions  Float
+  bonuses     Float
+  taxWithheld Float
+  currency    String
+  payrollDate DateTime
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+  updatedBy   String
+}
+
+model Employee {
+  id        String    @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String    @unique
+  address   String
+  phone     String
+  hireDate  DateTime
+  salary    Float
+  currency  String
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  payrolls  Payroll[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model FixedAsset {
+  id                      String   @id @default(cuid())
+  name                    String
+  acquisitionCost         Float
+  acquisitionDate         DateTime
+  usefulLifeYears         Int
+  residualValue           Float
+  depreciationRate        Float
+  accumulatedDepreciation Float    @default(0)
+  impairmentLoss          Float?   @default(0) // Handle impairment losses according to IAS 36
+  companyId               String
+  company                 Company  @relation(fields: [companyId], references: [id])
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model Lease {
+  id              String    @id @default(cuid())
+  leaseNumber     String    @unique
+  description     String
+  leaseType       LeaseType
+  rightOfUseAsset Float // Value of the right-of-use asset
+  leaseLiability  Float // Value of the lease liability
+  startDate       DateTime
+  endDate         DateTime
+  monthlyPayment  Float
+  interestRate    Float
+  currency        String
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Contract {
+  id                     String                  @id @default(cuid())
+  contractNumber         String                  @unique
+  customerId             String
+  customer               Customer                @relation(fields: [customerId], references: [id])
+  totalValue             Float
+  currency               String
+  startDate              DateTime
+  endDate                DateTime
+  performanceObligations PerformanceObligation[]
+  companyId              String
+  company                Company                 @relation(fields: [companyId], references: [id])
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+}
+
+model PerformanceObligation {
+  id                String    @id @default(cuid())
+  description       String
+  amount            Float
+  contractId        String
+  contract          Contract  @relation(fields: [contractId], references: [id])
+  revenueRecognized Float     @default(0) // Track how much revenue has been recognized
+  recognitionDate   DateTime? // Date when revenue is recognized
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // e.g., "CREATE", "UPDATE", "DELETE"
+  entityType String // e.g., "Invoice", "Transaction"
+  entityId   String // ID of the entity that was changed
+  changes    Json // Details of the changes made
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+enum UserRole {
+  ADMIN
+  ACCOUNTANT
+  USER
+}
+
+enum AccessLevel {
+  FULL_ACCESS
+  INVOICING_ONLY
+  VIEW_ONLY
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum AccountSubtype {
+  CURRENT_ASSET
+  FIXED_ASSET
+  CURRENT_LIABILITY
+  LONG_TERM_LIABILITY
+  REVENUE
+  COST_OF_SALES
+  EXPENSE
+  EQUITY
+}
+
+enum LeaseType {
+  OPERATING
+  FINANCE
+}
+
+enum TaxType {
+  VAT
+  SALES
+}
