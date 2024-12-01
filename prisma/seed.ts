@@ -1,120 +1,75 @@
-// import { PrismaClient } from '@prisma/client';
-// import { hash } from 'bcrypt';
+import { PrismaClient, AccountType } from '@prisma/client';
 
-// const prisma = new PrismaClient();
+const prisma = new PrismaClient();
 
-// async function main() {
-//     // Create a company
-//     const company = await prisma.company.create({
-//         data: {
-//             name: 'Acme Corporation',
-//             address: '123 Main St, Anytown, USA',
-//             phone: '+1-800-555-1234',
-//             email: 'info@acme.com',
-//             taxId: 'ACME123456',
-//             fiscalYearStart: new Date('2024-01-01T00:00:00.000Z'),
-//             fiscalYearEnd: new Date('2024-12-31T23:59:59.000Z'),
-//             currency: 'USD',
-//         },
-//     });
+async function main() {
+    console.log('Seeding Chart of Accounts...');
 
-//     // Create a user
-//     const user = await prisma.user.create({
-//         data: {
-//             email: 'john.doe@acme.com',
-//             password: await hash('password123', 10),
-//             firstName: 'John',
-//             lastName: 'Doe',
-//             companies: {
-//                 create: {
-//                     companyId: company.id,
-//                     role: 'ADMIN',
-//                     accessLevel: 'FULL_ACCESS',
-//                     permissions: {},
-//                 },
-//             },
-//         },
-//     });
+    // Asset Accounts
+    await prisma.account.createMany({
+        data: [
+            { accountNumber: '100000', groupCode: 'ASSET', name: 'Cash', accountType: 'ASSET', currentBalance: 0 },
+            { accountNumber: '101000', groupCode: 'ASSET', name: 'Bank', accountType: 'ASSET', currentBalance: 0 },
+            { accountNumber: '102000', groupCode: 'ASSET', name: 'Accounts Receivable', accountType: 'ASSET', currentBalance: 0 },
+            { accountNumber: '103000', groupCode: 'ASSET', name: 'Inventory', accountType: 'ASSET', currentBalance: 0 },
+            { accountNumber: '104000', groupCode: 'ASSET', name: 'Prepaid Expenses', accountType: 'ASSET', currentBalance: 0 },
+            { accountNumber: '105000', groupCode: 'ASSET', name: 'Fixed Assets', accountType: 'ASSET', currentBalance: 0 },
+            { accountNumber: '106000', groupCode: 'ASSET', name: 'Accumulated Depreciation', accountType: 'ASSET', currentBalance: 0 },
+        ],
+    });
 
-//     // Create accounts
-//     const cashAccount = await prisma.account.create({
-//         data: {
-//             name: 'Cash',
-//             type: 'ASSET',
-//             subtype: 'CURRENT_ASSET',
-//             number: '1001',
-//             balance: 10000,
-//             currency: 'USD',
-//             companyId: company.id,
-//         },
-//     });
+    // Liability Accounts
+    await prisma.account.createMany({
+        data: [
+            { accountNumber: '200000', groupCode: 'LIABILITY', name: 'Accounts Payable', accountType: 'LIABILITY', currentBalance: 0 },
+            { accountNumber: '201000', groupCode: 'LIABILITY', name: 'Accrued Liabilities', accountType: 'LIABILITY', currentBalance: 0 },
+            { accountNumber: '202000', groupCode: 'LIABILITY', name: 'Short-Term Loans', accountType: 'LIABILITY', currentBalance: 0 },
+            { accountNumber: '203000', groupCode: 'LIABILITY', name: 'Long-Term Loans', accountType: 'LIABILITY', currentBalance: 0 },
+            { accountNumber: '204000', groupCode: 'LIABILITY', name: 'Deferred Revenue', accountType: 'LIABILITY', currentBalance: 0 },
+        ],
+    });
 
-//     const salesAccount = await prisma.account.create({
-//         data: {
-//             name: 'Sales',
-//             type: 'REVENUE',
-//             number: '4001',
-//             balance: 0,
-//             currency: 'USD',
-//             companyId: company.id,
-//         },
-//     });
+    // Equity Accounts
+    await prisma.account.createMany({
+        data: [
+            { accountNumber: '300000', groupCode: 'EQUITY', name: 'Capital Stock', accountType: 'EQUITY', currentBalance: 0 },
+            { accountNumber: '301000', groupCode: 'EQUITY', name: 'Retained Earnings', accountType: 'EQUITY', currentBalance: 0 },
+            { accountNumber: '302000', groupCode: 'EQUITY', name: 'Dividends', accountType: 'EQUITY', currentBalance: 0 },
+        ],
+    });
 
-//     // Create a customer
-//     const customer = await prisma.customer.create({
-//         data: {
-//             name: 'John Smith',
-//             email: 'john.smith@example.com',
-//             companyId: company.id,
-//         },
-//     });
+    // Revenue Accounts
+    await prisma.account.createMany({
+        data: [
+            { accountNumber: '400000', groupCode: 'REVENUE', name: 'Sales Revenue', accountType: 'REVENUE', currentBalance: 0 },
+            { accountNumber: '401000', groupCode: 'REVENUE', name: 'Service Revenue', accountType: 'REVENUE', currentBalance: 0 },
+            { accountNumber: '402000', groupCode: 'REVENUE', name: 'Other Revenue', accountType: 'REVENUE', currentBalance: 0 },
+        ],
+    });
 
-//     // Create an item
-//     const item = await prisma.item.create({
-//         data: {
-//             name: 'Widget A',
-//             description: 'A high-quality widget',
-//             unitPrice: 100,
-//             quantityOnHand: 50,
-//             sku: 'WIDGETA',
-//             companyId: company.id,
-//         },
-//     });
+    // Expense Accounts
+    await prisma.account.createMany({
+        data: [
+            { accountNumber: '500000', groupCode: 'EXPENSE', name: 'Cost of Goods Sold', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '501000', groupCode: 'EXPENSE', name: 'Salaries and Wages', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '502000', groupCode: 'EXPENSE', name: 'Rent Expense', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '503000', groupCode: 'EXPENSE', name: 'Utilities Expense', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '504000', groupCode: 'EXPENSE', name: 'Office Supplies', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '505000', groupCode: 'EXPENSE', name: 'Depreciation Expense', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '506000', groupCode: 'EXPENSE', name: 'Insurance Expense', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '507000', groupCode: 'EXPENSE', name: 'Advertising Expense', accountType: 'EXPENSE', currentBalance: 0 },
+            { accountNumber: '508000', groupCode: 'EXPENSE', name: 'Interest Expense', accountType: 'EXPENSE', currentBalance: 0 },
+        ],
+    });
 
-//     // Create an invoice
-//     const invoice = await prisma.invoice.create({
-//         data: {
-//             invoiceNumber: 'INV-001',
-//             amount: 1000,
-//             dueDate: new Date('2024-12-31T00:00:00.000Z'),
-//             paid: false,
-//             currency: 'USD',
-//             customerId: customer.id,
-//             companyId: company.id,
-//             createdBy: user.id,
-//             updatedBy: user.id,
-//             lineItems: {
-//                 create: [
-//                     {
-//                         description: 'Widget A',
-//                         quantity: 10,
-//                         unitPrice: 100,
-//                         amount: 1000,
-//                         itemId: item.id,
-//                     },
-//                 ],
-//             },
-//         },
-//     });
+    console.log('Seeding Complete!');
+}
 
-//     console.log('Seed data created:', { company, user, cashAccount, salesAccount, customer, item, invoice });
-// }
-
-// main()
-//     .catch((e) => {
-//         console.error(e);
-//         process.exit(1);
-//     })
-//     .finally(async () => {
-//         await prisma.$disconnect();
-//     });
+main()
+    .catch((e) => {
+        console.error(e);
+        process.exit(1);
+    })
+    .finally(async () => {
+        await prisma.$disconnect();
+    });
