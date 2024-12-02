@@ -24,6 +24,7 @@ export class ChartOfAccountsService {
         });
     }
 
+
     // Get a single account by ID
     async getAccountById(id: string): Promise<Account | null> {
         return this.prisma.account.findUnique({

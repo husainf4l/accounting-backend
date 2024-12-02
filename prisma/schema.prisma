@@ -31,20 +31,21 @@ enum PaymentMode {
 
 // Chart of Accounts Model
 model Account {
-  id              String        @id @default(uuid())
-  accountNumber   String        @unique
+  id              String          @id @default(uuid())
+  accountNumber   String          @unique
   groupCode       String
   name            String
   accountType     AccountType
-  openingBalance  Float?        @default(0.0)
-  currentBalance  Float         @default(0.0)
+  openingBalance  Float?          @default(0.0)
+  currentBalance  Float           @default(0.0)
   parentAccountId String?
-  parentAccount   Account?      @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
-  children        Account[]     @relation("AccountHierarchy")
+  parentAccount   Account?        @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  children        Account[]       @relation("AccountHierarchy")
   transactions    Transaction[]
   leases          Lease[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  GeneralLedger   GeneralLedger[]
 }
 
 // Transactions Model
@@ -54,13 +55,13 @@ model Transaction {
   account        Account      @relation(fields: [accountId], references: [id])
   journalEntryId String
   journalEntry   JournalEntry @relation("JournalEntryTransactions", fields: [journalEntryId], references: [id])
-  amount         Float
+  debit          Float? // Use separate fields for debit and credit
+  credit         Float? // Helps differentiate the nature of the transaction
   currency       String       @default("JOD")
   notes          String?
   createdAt      DateTime     @default(now())
 }
 
-// Journal Entries Model
 model JournalEntry {
   id           String        @id @default(uuid())
   date         DateTime      @default(now())
@@ -153,4 +154,12 @@ model Asset {
   fairValue   Float?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model GeneralLedger {
+  id        String   @id @default(uuid())
+  accountId String   @unique
+  balance   Float
+  updatedAt DateTime @updatedAt
+  account   Account  @relation(fields: [accountId], references: [id])
 }

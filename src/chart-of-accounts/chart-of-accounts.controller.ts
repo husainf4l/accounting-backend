@@ -18,6 +18,7 @@ export class ChartOfAccountsController {
         return this.chartOfAccountsService.getAccountById(id);
     }
 
+
     // Create a new account
     @Post()
     async createAccount(@Body() accountData: Prisma.AccountCreateInput) {
