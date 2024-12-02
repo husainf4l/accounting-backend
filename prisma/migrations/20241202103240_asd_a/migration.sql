@@ -11,12 +11,13 @@ CREATE TYPE "PaymentMode" AS ENUM ('CASH', 'ACCOUNTS_RECEIVABLE');
 CREATE TABLE "Account" (
     "id" TEXT NOT NULL,
     "accountNumber" TEXT NOT NULL,
-    "groupCode" TEXT NOT NULL,
+    "hierarchyCode" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "accountType" "AccountType" NOT NULL,
     "openingBalance" DOUBLE PRECISION DEFAULT 0.0,
     "currentBalance" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
     "parentAccountId" TEXT,
+    "mainAccount" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -28,7 +29,8 @@ CREATE TABLE "Transaction" (
     "id" TEXT NOT NULL,
     "accountId" TEXT NOT NULL,
     "journalEntryId" TEXT NOT NULL,
-    "amount" DOUBLE PRECISION NOT NULL,
+    "debit" DOUBLE PRECISION,
+    "credit" DOUBLE PRECISION,
     "currency" TEXT NOT NULL DEFAULT 'JOD',
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -139,11 +141,27 @@ CREATE TABLE "Asset" (
     CONSTRAINT "Asset_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "GeneralLedger" (
+    "id" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
+    "balance" DOUBLE PRECISION NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GeneralLedger_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Account_accountNumber_key" ON "Account"("accountNumber");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Account_hierarchyCode_key" ON "Account"("hierarchyCode");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Invoice_invoiceNumber_key" ON "Invoice"("invoiceNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "GeneralLedger_accountId_key" ON "GeneralLedger"("accountId");
 
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_parentAccountId_fkey" FOREIGN KEY ("parentAccountId") REFERENCES "Account"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -165,3 +183,6 @@ ALTER TABLE "Obligation" ADD CONSTRAINT "Obligation_contractId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "Lease" ADD CONSTRAINT "Lease_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GeneralLedger" ADD CONSTRAINT "GeneralLedger_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

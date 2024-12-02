@@ -22,7 +22,7 @@ export class ChartOfAccountsController {
     // Create a new account
     @Post()
     async createAccount(@Body() accountData: Prisma.AccountCreateInput) {
-        return this.chartOfAccountsService.createAccount(accountData);
+        return this.chartOfAccountsService.createAccount2(accountData);
     }
 
     // Update an account
@@ -39,4 +39,10 @@ export class ChartOfAccountsController {
     async deleteAccount(@Param('id') id: string) {
         return this.chartOfAccountsService.deleteAccount(id);
     }
+
+    @Post('initialize')
+    async initialize() {
+      return this.chartOfAccountsService.initializeChartOfAccounts();
+    }
+  
 }

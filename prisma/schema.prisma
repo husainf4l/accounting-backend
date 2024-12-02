@@ -16,6 +16,8 @@ enum AccountType {
   EXPENSE
 }
 
+
+
 enum TaxType {
   VAT
   ZERO_RATE
@@ -32,8 +34,7 @@ enum PaymentMode {
 // Chart of Accounts Model
 model Account {
   id              String          @id @default(uuid())
-  accountNumber   String          @unique
-  groupCode       String
+  hierarchyCode   String          @unique
   name            String
   accountType     AccountType
   openingBalance  Float?          @default(0.0)
@@ -41,18 +42,20 @@ model Account {
   parentAccountId String?
   parentAccount   Account?        @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
   children        Account[]       @relation("AccountHierarchy")
-  transactions    Transaction[]
+  transactions    Transaction[]  
   leases          Lease[]
+  mainAccount     Boolean         @default(false)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   GeneralLedger   GeneralLedger[]
 }
 
+
 // Transactions Model
 model Transaction {
   id             String       @id @default(uuid())
   accountId      String
-  account        Account      @relation(fields: [accountId], references: [id])
+  account         Account   @relation(fields: [accountId], references: [id])
   journalEntryId String
   journalEntry   JournalEntry @relation("JournalEntryTransactions", fields: [journalEntryId], references: [id])
   debit          Float? // Use separate fields for debit and credit
