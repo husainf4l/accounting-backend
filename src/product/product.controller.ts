@@ -34,10 +34,7 @@ export class ProductController {
       return result;
     }
 
-    @Get('invoice-products')
-    async getInvoiceProducts(){
-       return this.productsService.getInvoiceProducts()
-    }
+
   
   
 }

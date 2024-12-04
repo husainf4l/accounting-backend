@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Post } from '@nestjs/common';
+import {  Body, Controller, Get, Post } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 
 @Controller('clients')
@@ -7,7 +7,7 @@ export class ClientsController {
 
     constructor(private readonly clientsService: ClientsService) { }
 
-    @Post()
+    @Post('create-new')
     async createClient(
         @Body() data: { name: string; email?: string; phone?: string; address?: string },
     ) {
@@ -27,8 +27,5 @@ export class ClientsController {
     }
 
 
-    @Get('invoice-clients')
-    async getInvoiceClients() {
-        return this.clientsService.getInvoiceClients();
-    }
+  
 }

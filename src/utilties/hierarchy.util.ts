@@ -4,6 +4,9 @@ export async function generateHierarchyCode(
     prisma: PrismaClient,
     parentAccountId: string,
 ): Promise<string> {
+    let hierarchyCode: string;
+    let conflictExists: boolean;
+
     // Fetch the last child hierarchy code
     const lastChild = await prisma.account.findFirst({
         where: { parentAccountId },
@@ -13,11 +16,34 @@ export async function generateHierarchyCode(
 
     if (lastChild?.hierarchyCode) {
         const parts = lastChild.hierarchyCode.split('.');
-        const lastNumber = parseInt(parts[parts.length - 1], 10);
-        parts[parts.length - 1] = (lastNumber + 1).toString(); // Increment the last number
-        return parts.join('.');
+        let lastNumber = parseInt(parts[parts.length - 1], 10);
+
+        do {
+            lastNumber += 1; // Increment the last number
+            parts[parts.length - 1] = lastNumber.toString();
+            hierarchyCode = parts.join('.');
+
+            // Check if the generated code already exists
+            conflictExists = !!(await prisma.account.findUnique({
+                where: { hierarchyCode },
+                select: { id: true },
+            }));
+
+        } while (conflictExists);
     } else {
         // First child
-        return `${parentAccountId}.1`;
+        hierarchyCode = `${parentAccountId}.1`;
+
+        // Ensure the first hierarchy code is unique
+        conflictExists = !!(await prisma.account.findUnique({
+            where: { hierarchyCode },
+            select: { id: true },
+        }));
+
+        if (conflictExists) {
+            throw new Error(`Conflict for initial hierarchy code: ${hierarchyCode}`);
+        }
     }
+
+    return hierarchyCode;
 }

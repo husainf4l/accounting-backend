@@ -15,12 +15,21 @@ import { AccountsModule } from './accounts/accounts.module';
 import { ProductModule } from './product/product.module';
 import { UploadModule } from './upload/upload.module';
 import { ClientsModule } from './clients/clients.module';
+import { AuthModule } from './auth/auth.module';
+import { ConfigModule } from '@nestjs/config';
+import { InitiateModule } from './initiate/initiate.module';
+import { InvoiceModule } from './invoice/invoice.module';
+import { EmployeesModule } from './employees/employees.module';
 
 
 
 
 @Module({
-  imports: [ChartOfAccountsModule, PrismaModule, JournalEntryModule, GeneralLedgerModule, ScheduleModule.forRoot(), BackupModule, FirebaseModule, AccountsModule, ProductModule, UploadModule, ClientsModule],
+  imports: [ChartOfAccountsModule, PrismaModule, JournalEntryModule, GeneralLedgerModule, ScheduleModule.forRoot(), BackupModule,
+    AuthModule, ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+     FirebaseModule, AccountsModule, ProductModule, UploadModule, ClientsModule, InitiateModule, InvoiceModule, EmployeesModule],
   controllers: [AppController, GeneralLedgerController],
   providers: [AppService, PrismaService, GeneralLedgerService],
 

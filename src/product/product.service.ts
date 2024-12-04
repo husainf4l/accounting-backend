@@ -51,15 +51,6 @@ export class ProductService {
     }
     
 
-    async getInvoiceProducts(){
-       return await this.prisma.product.findMany({
-            select:{
-                id:true,
-                barcode:true,
-                name:true,
-                salesPrice:true
-            }
-        })
-    }
+
       
 }

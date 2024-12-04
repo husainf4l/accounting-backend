@@ -96,6 +96,8 @@ export class ChartOfAccountsService {
             // Level 3 accounts under Current Liabilities
             { hierarchyCode: '2.1.1', name: 'Accounts Payable', accountType: AccountType.LIABILITY, mainAccount: false, parentHierarchyCode: '2.1' },
             { hierarchyCode: '2.1.2', name: 'Sales Tax Payable', accountType: AccountType.LIABILITY, mainAccount: false, parentHierarchyCode: '2.1' },
+            { hierarchyCode: '2.1.3', name: 'Employees', accountType: AccountType.LIABILITY, mainAccount: false, parentHierarchyCode: '2.1' },
+
     
             // Level 3 accounts under Long-Term Liabilities
             { hierarchyCode: '2.2.1', name: 'Loans Payable', accountType: AccountType.LIABILITY, mainAccount: false, parentHierarchyCode: '2.2' },
