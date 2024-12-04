@@ -37,29 +37,30 @@ model Account {
   GeneralLedger   GeneralLedger[]
 }
 
-model ClientDetails {
-  id        String   @id @default(uuid())
-  accountId String   @unique
-  email     String?
-  phone     String?
-  address   String?
-  taxNumber String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+// model ClientDetails {
+//   id        String   @id @default(uuid())
+//   accountId String   @unique
+//   email     String?
+//   phone     String?
+//   address   String?
+//   taxNumber String?
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
 
 model Employee {
-  id             String   @id @default(uuid())
-  accountId      String   @unique
+  id             String    @id @default(uuid())
+  accountId      String    @unique
   position       String?
   displayName    String
   department     String?
   hireDate       DateTime?
   salary         Float?
   commissionRate Float?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  Invoice        Invoice[]
 }
 
 model BankDetails {
@@ -98,10 +99,10 @@ model JournalEntry {
   transactions Transaction[] @relation("JournalEntryTransactions")
 }
 
-// Customer Model
 model Customer {
   id        String     @id @default(uuid())
   name      String
+  accountId String     @unique
   email     String?
   phone     String?
   address   String?
@@ -112,20 +113,22 @@ model Customer {
 
 // Invoice Model
 model Invoice {
-  id            String        @id @default(uuid())
-  invoiceNumber Int        @unique
-  customerId    String
-  customer      Customer      @relation(fields: [customerId], references: [id])
-  date          DateTime      @default(now())
-  total         Float
-  taxType       TaxType       @default(VAT)
-  taxAmount     Float
-  grandTotal    Float
-  paymentMode   PaymentMode   @default(CASH)
-  vendorName    String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  invoiceItems  InvoiceItem[]
+  id               String        @id @default(uuid())
+  invoiceNumber    Int           @unique
+  customerId       String
+  accountManagerId String?
+  accountManager   Employee?     @relation(fields: [accountManagerId], references: [id])
+  customer         Customer      @relation(fields: [customerId], references: [id])
+  date             DateTime      @default(now())
+  total            Float
+  taxType          TaxType       @default(VAT)
+  taxAmount        Float
+  grandTotal       Float
+  paymentMode      PaymentMode   @default(CASH)
+  vendorName       String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  invoiceItems     InvoiceItem[]
 }
 
 // Contract Model for Revenue Recognition (IFRS 15)
