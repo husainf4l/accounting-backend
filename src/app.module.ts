@@ -14,12 +14,13 @@ import { FirebaseModule } from './Firebase/firebase/firebase.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { ProductModule } from './product/product.module';
 import { UploadModule } from './upload/upload.module';
+import { ClientsModule } from './clients/clients.module';
 
 
 
 
 @Module({
-  imports: [ChartOfAccountsModule, PrismaModule, JournalEntryModule, GeneralLedgerModule, ScheduleModule.forRoot(), BackupModule, FirebaseModule, AccountsModule, ProductModule, UploadModule],
+  imports: [ChartOfAccountsModule, PrismaModule, JournalEntryModule, GeneralLedgerModule, ScheduleModule.forRoot(), BackupModule, FirebaseModule, AccountsModule, ProductModule, UploadModule, ClientsModule],
   controllers: [AppController, GeneralLedgerController],
   providers: [AppService, PrismaService, GeneralLedgerService],
 
