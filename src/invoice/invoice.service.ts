@@ -146,8 +146,8 @@ export class InvoiceService {
                     create: [
                         {
                             accountId: data.clientId,
-                            debit: null,
-                            credit: data.grandTotal,
+                            debit: data.grandTotal,
+                            credit: null,
                             currency: 'JOD',
                             notes: 'Invoice payment received',
                         },
