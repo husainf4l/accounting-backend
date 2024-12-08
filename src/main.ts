@@ -1,24 +1,22 @@
-// src/main.ts
 import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
+import fastifyMultipart from '@fastify/multipart';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(
+  const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
+    new FastifyAdapter(),
   );
 
-  const uploadsPath = join(__dirname, '..', '..', 'uploads');
+  const fastifyInstance = app.getHttpAdapter().getInstance();
 
-  app.useStaticAssets(uploadsPath, {
-    prefix: '/api/uploads/',
-  });
+  await fastifyInstance.register(fastifyMultipart);
 
   app.setGlobalPrefix('api');
   app.enableCors();
 
   await app.listen(3001, '0.0.0.0');
-
+  console.log('Application is running on: http://localhost:3001');
 }
 bootstrap();

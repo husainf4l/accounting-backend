@@ -1,11 +1,21 @@
-import { Controller, Post, UseInterceptors, UploadedFile, Body } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Controller, Post, Req } from '@nestjs/common';
+import { FastifyRequest } from 'fastify';
 import { UploadService } from './upload.service';
-import * as path from 'path';
 
 @Controller('upload')
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
- 
+  @Post()
+  async uploadFile(@Req() request: FastifyRequest): Promise<{ message: string; filePath: string }> {
+    const file = await request.file();
+
+    if (!file) {
+      throw new Error('No file uploaded');
+    }
+
+    const filePath = await this.uploadService.saveFile(file);
+
+    return { message: 'File uploaded successfully', filePath };
+  }
 }
