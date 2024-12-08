@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UnauthorizedException, Get, Req, Res, HttpException, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { LoginRequest, SignupRequest } from './dto/auth.dto';
 
 @Controller('auth')
@@ -16,7 +16,7 @@ export class AuthController {
 
     // Verify token method: Validates the provided JWT token
     @Get('verify-token')
-    async verifyToken(@Req() req: ExpressRequest, @Res() res: ExpressResponse) {
+    async verifyToken(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
         const token = req.headers.authorization?.split(' ')[1]; // Extract token from the Authorization header
 
         if (!token) {
@@ -25,10 +25,10 @@ export class AuthController {
 
         try {
             const decoded = await this.authService.verifyToken(token);
-            res.status(HttpStatus.OK).json({ valid: true, decoded });
+            return reply.status(HttpStatus.OK).send({ valid: true, decoded });
         } catch (error) {
             console.error('Token verification failed:', error);
-            res.status(HttpStatus.UNAUTHORIZED).json({ valid: false, message: error.message });
+            return reply.status(HttpStatus.UNAUTHORIZED).send({ valid: false, message: error.message });
         }
     }
 
