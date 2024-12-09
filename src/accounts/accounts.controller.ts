@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { AccountsService } from './accounts.service';
 
 @Controller('accounts')
@@ -14,6 +14,16 @@ export class AccountsController {
         @Query('endDate') endDate?: string,
     ) {
         return this.accountsService.getAccountStatement(accountId, +page, +limit, startDate, endDate);
+    }
+
+    @Post()
+    async createAccount(@Body() accountData: any) {
+        return this.accountsService.createAccount(accountData);
+    }
+
+    @Get('main')
+    async getMainAccounts() {
+        return this.accountsService.getMainAccount();
     }
 
 }

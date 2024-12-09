@@ -125,20 +125,21 @@ model Invoice {
 }
 
 model Receipt {
-  id               String      @id @default(uuid())
-  receiptNumber    Int         @unique
-  customerId       String
-  customer         Customer    @relation(fields: [customerId], references: [id])
-  accountManagerId String? // Optional
-  accountManager   Employee?   @relation(fields: [accountManagerId], references: [id])
-  date             DateTime    @default(now())
-  paymentMode      PaymentMode
-  cashBoxId        String? // Optional for Cash payments
-  chequeDetails    Cheque[] // Multiple cheques for cheque payments
-  totalAmount      Float
-  notes            String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  id                   String      @id @default(uuid())
+  receiptNumber        Int         @unique
+  accountId            String
+  customerId           String
+  customer             Customer    @relation(fields: [customerId], references: [id])
+  accountManagerId     String? // Optional
+  accountManager       Employee?   @relation(fields: [accountManagerId], references: [id])
+  date                 DateTime    @default(now())
+  paymentMode          PaymentMode
+  TransactionAccountId String? // Optional for Cash payments
+  chequeDetails        Cheque[] // Multiple cheques for cheque payments
+  totalAmount          Float
+  notes                String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 }
 
 model Cheque {
