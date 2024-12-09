@@ -21,16 +21,17 @@ import { UploadService } from './upload/upload.service';
 import { UploadModule } from './upload/upload.module';
 import { ProductModule } from './product/product.module';
 import { BackupModule } from './backup/backup.module';
+import { ReceiptModule } from './receipt/receipt.module';
 
 
 
 
 @Module({
-  imports: [ChartOfAccountsModule, PrismaModule, JournalEntryModule,  ScheduleModule.forRoot(),
+  imports: [ChartOfAccountsModule, PrismaModule, JournalEntryModule, ScheduleModule.forRoot(),
     AuthModule, ConfigModule.forRoot({
       isGlobal: true,
     }),
-     FirebaseModule, AccountsModule, ClientsModule, InitiateModule, InvoiceModule, EmployeesModule, GeneralLedgerModule, UploadModule, ProductModule, BackupModule],
+    FirebaseModule, AccountsModule, ClientsModule, InitiateModule, InvoiceModule, EmployeesModule, GeneralLedgerModule, UploadModule, ProductModule, BackupModule, ReceiptModule],
   controllers: [AppController],
   providers: [AppService, PrismaService, UploadService],
 

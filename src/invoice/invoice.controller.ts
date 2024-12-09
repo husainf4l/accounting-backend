@@ -17,12 +17,10 @@ export class InvoiceController {
         return this.invoiceService.getInvoiceDetails(invoiceId);
     }
 
-
     @Post('create')
     async createInvoice(@Body() createInvoiceDto: any) {
         return this.invoiceService.createInvoice(createInvoiceDto);
     }
-
 
 
 }

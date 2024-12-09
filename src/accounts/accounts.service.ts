@@ -89,10 +89,33 @@ export class AccountsService {
                 totalPages,
             },
         };
-
-
-
-
     }
+
+    async getCriticalAccounts() {
+        const requiredAccounts = ['4.1', '2.1.2', '5.5', '1.1.4'];
+        const accounts = await Promise.all(
+            requiredAccounts.map((code) => this.findAccountByHierarchyCode(code))
+        );
+
+        return {
+            salesRevenue: accounts[0],
+            salesTax: accounts[1],
+            cogs: accounts[2],
+            inventoryAccount: accounts[3],
+        };
+    }
+
+    private async findAccountByHierarchyCode(hierarchyCode: string) {
+        const account = await this.prisma.account.findUnique({
+            where: { hierarchyCode },
+        });
+
+        if (!account) {
+            throw new Error(`Account with hierarchy code ${hierarchyCode} not found`);
+        }
+
+        return account;
+    }
+
 }
 

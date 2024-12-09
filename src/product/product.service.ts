@@ -7,7 +7,7 @@ export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   async uploadProducts(filePath: string): Promise<any> {
     console.log('Started processing file:', filePath);
@@ -53,4 +53,44 @@ export class ProductService {
 
     return { success: true, insertedRows: result.length };
   }
+
+
+  async getProducts() {
+    return this.prisma.product.findMany({
+      select: { id: true, barcode: true, name: true, salesPrice: true },
+    });
+  }
+
+  async validateAndUpdateStock(invoiceItems: any[]) {
+    let totalCOGS = 0;
+
+    await Promise.all(
+      invoiceItems.map(async (item) => {
+        const product = await this.prisma.product.findUnique({
+          where: { id: item.productId },
+        });
+
+        if (!product) {
+          throw new Error(`Product with ID ${item.productId} does not exist`);
+        }
+
+        if (product.stock < item.quantity) {
+          throw new Error(
+            `Insufficient stock for product ID: ${item.productId} (Available: ${product.stock}, Required: ${item.quantity})`
+          );
+        }
+
+        totalCOGS += product.costPrice * item.quantity;
+
+        await this.prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: product.stock - item.quantity },
+        });
+      })
+    );
+
+    return totalCOGS;
+  }
+
+
 }

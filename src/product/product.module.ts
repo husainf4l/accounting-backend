@@ -4,7 +4,8 @@ import { ProductController } from './product.controller';
 import { UploadService } from 'src/upload/upload.service';
 
 @Module({
-  providers: [ProductService,UploadService],
-  controllers: [ProductController]
+  providers: [ProductService, UploadService],
+  controllers: [ProductController],
+  exports: [ProductService],
 })
-export class ProductModule {}
+export class ProductModule { }

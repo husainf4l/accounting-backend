@@ -73,6 +73,33 @@ export class ClientsService {
 
 
 
+    async getClients() {
+        const accountsReceivable = await this.prisma.account.findUnique({
+            where: { hierarchyCode: '1.1.3' },
+        });
+
+        if (!accountsReceivable) {
+            throw new Error('Accounts Receivable account not found');
+        }
+
+        return this.prisma.account.findMany({
+            where: { parentAccountId: accountsReceivable.id },
+            select: { id: true, name: true, currentBalance: true, hierarchyCode: true },
+        });
+    }
+
+    async ensureCustomerExists(clientId: string, clientName: string) {
+        const existingCustomer = await this.prisma.customer.findUnique({
+            where: { accountId: clientId },
+        });
+
+        if (existingCustomer) return existingCustomer;
+
+        return this.prisma.customer.create({
+            data: { name: clientName, accountId: clientId },
+        });
+    }
+
 
 }
 
