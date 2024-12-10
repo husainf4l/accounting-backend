@@ -4,17 +4,20 @@ import { CreateReceiptDto } from './dto/CreateReceiptDto';
 
 @Controller('receipt')
 export class ReceiptController {
-  constructor(private readonly receiptService: ReceiptService) { }
-
+  constructor(private readonly receiptService: ReceiptService) {}
 
   @Get('receipt-data')
   async getReceiptData() {
-    return this.receiptService.getReceiptData()
+    return this.receiptService.getReceiptData();
   }
-  
+
   @Post()
   async createReceipt(@Body() createReceiptDto: CreateReceiptDto) {
     return this.receiptService.createReceipt(createReceiptDto);
   }
 
+  @Get('receipt-list')
+  async getReceiptList() {
+    return this.receiptService.getReceiptList();
+  }
 }

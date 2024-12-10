@@ -7,7 +7,7 @@ export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
 
   async uploadProducts(filePath: string): Promise<any> {
     console.log('Started processing file:', filePath);
@@ -34,9 +34,15 @@ export class ProductService {
     const formattedRows = rows.map((row) => ({
       ...row,
       barcode: row.barcode ? String(row.barcode) : null,
-      costPrice: row.costPrice ? parseFloat(Number(row.costPrice).toFixed(3)) : null,
-      salesPrice: row.salesPrice ? parseFloat(Number(row.salesPrice).toFixed(3)) : null,
-      wholesalePrice: row.wholesalePrice ? parseFloat(Number(row.wholesalePrice).toFixed(3)) : null,
+      costPrice: row.costPrice
+        ? parseFloat(Number(row.costPrice).toFixed(3))
+        : null,
+      salesPrice: row.salesPrice
+        ? parseFloat(Number(row.salesPrice).toFixed(3))
+        : null,
+      wholesalePrice: row.wholesalePrice
+        ? parseFloat(Number(row.wholesalePrice).toFixed(3))
+        : null,
       isActive: row.isActive === 'TRUE' || row.isActive === true,
     }));
 
@@ -54,11 +60,20 @@ export class ProductService {
     return { success: true, insertedRows: result.length };
   }
 
-
   async getProducts() {
-    return this.prisma.product.findMany({
-      select: { id: true, barcode: true, name: true, salesPrice: true },
+    const products = await this.prisma.product.findMany({
+      orderBy: { name: 'asc' },
     });
+
+    const finalProducts = products.map((product) => {
+      const totalCost = product.costPrice * product.stock;
+      return {
+        ...product,
+        totalCost: totalCost.toFixed(3),
+      };
+    });
+
+    return finalProducts;
   }
 
   async validateAndUpdateStock(invoiceItems: any[]) {
@@ -76,7 +91,7 @@ export class ProductService {
 
         if (product.stock < item.quantity) {
           throw new Error(
-            `Insufficient stock for product ID: ${item.productId} (Available: ${product.stock}, Required: ${item.quantity})`
+            `Insufficient stock for product ID: ${item.productId} (Available: ${product.stock}, Required: ${item.quantity})`,
           );
         }
 
@@ -86,11 +101,9 @@ export class ProductService {
           where: { id: item.productId },
           data: { stock: product.stock - item.quantity },
         });
-      })
+      }),
     );
 
     return totalCOGS;
   }
-
-
 }

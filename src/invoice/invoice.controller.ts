@@ -22,5 +22,9 @@ export class InvoiceController {
         return this.invoiceService.createInvoice(createInvoiceDto);
     }
 
+    @Get('invoices-data')
+    async getInvoicesDetails() {
+        return this.invoiceService.getInvoicesDetails();
+    }
 
 }

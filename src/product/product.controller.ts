@@ -1,4 +1,4 @@
-import { Controller, Post, Req, Inject } from '@nestjs/common';
+import { Controller, Post, Req, Inject, Get } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -42,5 +42,10 @@ export class ProductController {
     // Call the service to process the file
     const result = await this.productsService.uploadProducts(filePath);
     return result;
+  }
+
+  @Get('all-products')
+  async allProducts() {
+    return this.productsService.getProducts();
   }
 }

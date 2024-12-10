@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { get } from 'http';
 import { AccountsService } from 'src/accounts/accounts.service';
 import { ClientsService } from 'src/clients/clients.service';
 import { EmployeesService } from 'src/employees/employees.service';
@@ -96,5 +97,31 @@ export class InvoiceService {
     }
 
     return invoice;
+  }
+
+  
+  async getInvoicesDetails() {
+    // Fetch all invoices
+    const invoices = await this.prisma.invoice.findMany();
+
+    // Loop through each invoice to fetch the customer details
+    const invoicesWithCustomer = [];
+
+    for (const invoice of invoices) {
+      // Fetch the customer (client) details using the customerId from the invoice
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: invoice.customerId },
+      });
+
+      // Create a new object with customer added to invoice data
+      const invoiceWithCustomer = {
+        ...invoice, // spread the invoice properties
+        customer: customer, // add customer data
+      };
+
+      invoicesWithCustomer.push(invoiceWithCustomer);
+    }
+
+    return invoicesWithCustomer; // Return the invoices with customer details added
   }
 }
