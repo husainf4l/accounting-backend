@@ -6,6 +6,8 @@ import { EmployeesService } from 'src/employees/employees.service';
 import { JournalEntryService } from 'src/journal-entry/journal-entry.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProductService } from 'src/product/product.service';
+import { AxiosResponse } from 'axios';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class InvoiceService {
@@ -16,7 +18,9 @@ export class InvoiceService {
     private readonly productsService: ProductService,
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
-  ) {}
+    private readonly httpService: HttpService,
+
+  ) { }
   private async getNextInvoiceNumber() {
     const lastInvoice = await this.prisma.invoice.findFirst({
       orderBy: { invoiceNumber: 'desc' },
@@ -39,6 +43,8 @@ export class InvoiceService {
   }
 
   async createInvoice(data: any) {
+
+    console.log(data)
     const customer = await this.clientsService.ensureCustomerExists(
       data.clientId,
       data.clientName,
@@ -66,7 +72,7 @@ export class InvoiceService {
       totalCOGS,
     });
 
-    return this.prisma.invoice.create({
+    const invoice = await this.prisma.invoice.create({
       data: {
         invoiceNumber: data.invoiceNumber,
         customer: { connect: { id: customer.id } },
@@ -76,7 +82,19 @@ export class InvoiceService {
         grandTotal: data.grandTotal,
       },
     });
+
+    // console.log(invoice)
+    // this.sendInvoiceToExternalServer(invoice)
+
+    return invoice
+
+
   }
+
+
+
+
+
 
   async getInvoiceDetails(invoiceId: string) {
     const invoice = await this.prisma.invoice.findUnique({
@@ -96,10 +114,82 @@ export class InvoiceService {
       throw new Error(`Invoice with ID ${invoiceId} not found`);
     }
 
+
+
+
     return invoice;
   }
 
-  
+
+  async sendInvoiceToExternalServer(invoice: any): Promise<AxiosResponse> {
+    try {
+      const xmlData = this.convertToUbl(invoice); // Convert the invoice data to XML format
+      const response = await this.httpService
+        .post('http://localhost:3001/api/xml-receiver/receive', xmlData, {
+          headers: {
+            'Content-Type': 'application/xml',
+          },
+        })
+        .toPromise();
+
+      console.log('Invoice sent to external server:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Error sending invoice to external server:', error);
+      throw error;
+    }
+  }
+
+  convertToUbl(invoice: any): string {
+    return `
+      <?xml version="1.0" encoding="UTF-8"?>
+      <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+               xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+               xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+        <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+        <cbc:CustomizationID>urn:customization</cbc:CustomizationID>
+        <cbc:ProfileID>urn:profile</cbc:ProfileID>
+        <cbc:ID>${invoice.invoiceNumber}</cbc:ID>
+        <cbc:IssueDate>${invoice.date}</cbc:IssueDate>
+        <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+        <cac:AccountingSupplierParty>
+          <cac:Party>
+            <cbc:PartyName>
+              <cbc:Name>${invoice.supplierName}</cbc:Name>
+            </cbc:PartyName>
+          </cac:Party>
+        </cac:AccountingSupplierParty>
+        <cac:AccountingCustomerParty>
+          <cac:Party>
+            <cbc:PartyName>
+              <cbc:Name>${invoice.customerName}</cbc:Name>
+            </cbc:PartyName>
+          </cac:Party>
+        </cac:AccountingCustomerParty>
+        <cac:LegalMonetaryTotal>
+          <cbc:TaxExclusiveAmount currencyID="${invoice.currency}">${invoice.total}</cbc:TaxExclusiveAmount>
+          <cbc:TaxInclusiveAmount currencyID="${invoice.currency}">${invoice.grandTotal}</cbc:TaxInclusiveAmount>
+        </cac:LegalMonetaryTotal>
+        <cac:TaxTotal>
+          <cbc:TaxAmount currencyID="${invoice.currency}">${invoice.taxAmount}</cbc:TaxAmount>
+        </cac:TaxTotal>
+        <cac:InvoiceLine>
+          ${invoice.lines.map((line: any) => `
+            <cac:Item>
+              <cbc:Name>${line.description}</cbc:Name>
+            </cac:Item>
+            <cac:Price>
+              <cbc:PriceAmount currencyID="${invoice.currency}">${line.price}</cbc:PriceAmount>
+            </cac:Price>
+          `).join('')}
+        </cac:InvoiceLine>
+      </Invoice>
+    `;
+  }
+
+
+
+
   async getInvoicesDetails() {
     // Fetch all invoices
     const invoices = await this.prisma.invoice.findMany();

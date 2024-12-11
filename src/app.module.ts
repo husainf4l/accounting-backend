@@ -22,6 +22,7 @@ import { UploadModule } from './upload/upload.module';
 import { ProductModule } from './product/product.module';
 import { BackupModule } from './backup/backup.module';
 import { ReceiptModule } from './receipt/receipt.module';
+import { XmlReceiverModule } from './xml-receiver/xml-receiver.module';
 
 
 
@@ -31,7 +32,7 @@ import { ReceiptModule } from './receipt/receipt.module';
     AuthModule, ConfigModule.forRoot({
       isGlobal: true,
     }),
-    FirebaseModule, AccountsModule, ClientsModule, InitiateModule, InvoiceModule, EmployeesModule, GeneralLedgerModule, UploadModule, ProductModule, BackupModule, ReceiptModule],
+    FirebaseModule, AccountsModule, ClientsModule, InitiateModule, InvoiceModule, EmployeesModule, GeneralLedgerModule, UploadModule, ProductModule, BackupModule, ReceiptModule, XmlReceiverModule],
   controllers: [AppController],
   providers: [AppService, PrismaService, UploadService],
 
