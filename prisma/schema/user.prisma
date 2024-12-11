@@ -15,17 +15,20 @@ model User {
 }
 
 model Company {
-  id        String   @id @default(uuid())
-  name      String
-  address   String?
-  phone     String?
-  email     String   @unique
-  website   String?
-  taxNumber String
-  logoImage String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
+  id             String   @id @default(uuid())
+  name           String
+  address        String?
+  einvoiceSecret String?
+  einvoiceKey    String?
+  whatsAppKey    String?
+  phone          String?
+  email          String   @unique
+  website        String?
+  taxNumber      String
+  logoImage      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  users          User[]
 }
 
 enum UserRole {

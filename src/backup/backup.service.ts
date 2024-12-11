@@ -68,6 +68,7 @@ export class BackupService {
           contentType: 'application/zip',
         },
       });
+      
       console.log(`Backup ${zipFileName} uploaded to Firebase successfully.`);
       await fs.unlink(zipFilePath);
     } catch (error) {

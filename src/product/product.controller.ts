@@ -8,6 +8,7 @@ import { ProductService } from './product.service';
 export class ProductController {
   constructor(private readonly productsService: ProductService) {}
 
+  
   @Post('upload')
   async uploadProducts(@Req() request: FastifyRequest): Promise<any> {
     // Parse the file from the request
