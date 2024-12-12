@@ -1,0 +1,15 @@
+-- CreateTable
+CREATE TABLE "EINV" (
+    "id" TEXT NOT NULL,
+    "EINV_RESULTS" TEXT,
+    "EINV_STATUS" TEXT,
+    "EINV_QR" TEXT,
+    "EINV_NUM" TEXT,
+    "EINV_INV_UUID" TEXT,
+    "invoiceId" TEXT NOT NULL,
+
+    CONSTRAINT "EINV_pkey" PRIMARY KEY ("id")
+);
+
+-- AddForeignKey
+ALTER TABLE "EINV" ADD CONSTRAINT "EINV_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

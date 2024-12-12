@@ -64,6 +64,7 @@ model Invoice {
   User                 User?                @relation(fields: [userId], references: [id])
   userId               String?
   isSubmitted          Boolean              @default(false)
+  EINV                 EINV[]
 }
 
 model AdditionalDocument {
@@ -117,4 +118,15 @@ model InvoiceItem {
   taxPercent          Float // Tax percentage (e.g., 7%, 16%)
   Product             Product? @relation(fields: [productId], references: [id])
   productId           String?
+}
+
+model EINV {
+  id            String  @id @default(uuid())
+  EINV_RESULTS  String?
+  EINV_STATUS   String?
+  EINV_QR       String?
+  EINV_NUM      String?
+  EINV_INV_UUID String?
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id])
 }

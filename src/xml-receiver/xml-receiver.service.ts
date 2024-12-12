@@ -3,6 +3,8 @@ import { parseStringPromise } from 'xml2js';
 import { AxiosResponse } from 'axios';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import { response } from 'express';
 
 @Injectable()
 export class XmlReceiverService {
@@ -13,13 +15,14 @@ export class XmlReceiverService {
 
   async receiveInvoiceXml(xmlData: string): Promise<any> {
     try {
-      const result = await parseStringPromise(xmlData); // Parse the XML into JavaScript object
-      console.log('Received Invoice Data:', result);
+      console.log('Raw XML Data:', xmlData);
 
-      // Here, you can process the data, save it to the database, etc.
-      // For now, we will simply return the parsed data.
+      const result = await parseStringPromise(xmlData);
+      console.log('Parsed XML Data:', result);
+
       return result;
     } catch (error) {
+      console.error('Error parsing XML data:', error.message);
       throw new Error('Error parsing XML data');
     }
   }
@@ -28,158 +31,142 @@ export class XmlReceiverService {
     const company = await this.prisma.company.findUnique({
       where: { id: '45e858b6-ddc7-400b-b8ea-4ec63b6ebb9e' },
     });
+
     if (!company) {
+      console.error('Company not found.');
       throw new Error('Company not found');
     }
 
+    const xmlData = this.convertToUbl(invoice, company);
+    const encodedXml = Buffer.from(xmlData, 'utf-8').toString('base64');
+    const payload = {
+      invoice: encodedXml,
+    };
+
     try {
-      const xmlData = this.convertToUbl(invoice, company); // Convert the invoice data to XML format
       const response = await this.httpService
-        .post(`${company.eInvoiceLink}`, xmlData, {
+        .post('https://backend.jofotara.gov.jo/core/invoices/', payload, {
           headers: {
-            'Content-Type': 'application/xml',
+            'Client-Id': '454e11a1-1a10-4212-b4b3-8e28fd9a75c8',
+            'Secret-Key':
+              'Gj5nS9wyYHRadaVffz5VKB4v4wlVWyPhcJvrTD4NHtN9Z8Pl9XB+9O9xiTjI14ZTg/+1TpPX6hUagPbcqs8CBaDeq8LlqrnOFJCGq4QhZmMWs5xPcOifs6J/tEWwLY6dFp9atVEHylU8huJc766XqxmRUc8YoUHuwANR0owYYMgj/QrdBBcb/1Dr8eOdZKkUNf58lweIokCEmJJuBbrxHU+caKwp/EN9dp7/jolXX/b5FEc4FyOwW5W8sm/YbOMx+hzjg1Dn0cbgbJ6v3LZf5Q==',
+            'Content-Type': 'application/json',
+            Cookie:
+              'stickounet=4fdb7136e666916d0e373058e9e5c44e|7480c8b0e4ce7933ee164081a50488f1',
           },
         })
         .toPromise();
-
-      console.log('Invoice sent to external server:', response.data);
-      return response;
+      console.log('API Response:', response.data);
     } catch (error) {
-      console.error('Error sending invoice to external server:', error);
-      throw error;
+      console.error('Error Details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw new Error(`Failed to send invoice: ${error.message}`);
     }
+
+    return;
   }
 
   convertToUbl(invoice: any, company: any): string {
     function formatDate(isoDate: string): string {
       const date = new Date(isoDate);
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Add leading zero to month
-      const day = String(date.getDate()).padStart(2, '0'); // Add leading zero to day
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
 
-    const invoiceLines = invoice.items
-      .map(
-        (line: any, index: number) => `
-        <cac:InvoiceLine>
-            <cbc:ID>${index + 1}</cbc:ID>
-            <cbc:InvoicedQuantity unitCode="PCE">${line.quantity}</cbc:InvoicedQuantity>
-            <cbc:LineExtensionAmount currencyID="${invoice.documentCurrency}">${line.lineExtensionAmount}</cbc:LineExtensionAmount>
-            <cac:TaxTotal>
-                <cbc:TaxAmount currencyID="${invoice.documentCurrency}">${line.taxAmount}</cbc:TaxAmount>
-                <cac:TaxSubtotal>
-                    <cbc:TaxAmount currencyID="${invoice.documentCurrency}">${line.taxAmount}</cbc:TaxAmount>
-                    <cac:TaxCategory>
-                        <cbc:ID schemeAgencyID="6" schemeID="UN/ECE 5305">${line.taxCategory}</cbc:ID>
-                        <cbc:Percent>${line.taxPercent}</cbc:Percent>
-                        <cac:TaxScheme>
-                            <cbc:ID schemeAgencyID="6" schemeID="UN/ECE 5153">VAT</cbc:ID>
-                        </cac:TaxScheme>
-                    </cac:TaxCategory>
-                </cac:TaxSubtotal>
-            </cac:TaxTotal>
-            <cac:Item>
-                <cbc:Name>${line.name}</cbc:Name>
-            </cac:Item>
-            <cac:Price>
-                <cbc:PriceAmount currencyID="${invoice.documentCurrency}">${line.unitPrice}</cbc:PriceAmount>
-                <cac:AllowanceCharge>
-                    <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
-                    <cbc:AllowanceChargeReason>DISCOUNT</cbc:AllowanceChargeReason>
-                    <cbc:Amount currencyID="${invoice.documentCurrency}">${line.discountAmount || 0}</cbc:Amount>
-                </cac:AllowanceCharge>
-            </cac:Price>
-        </cac:InvoiceLine>
-    `,
-      )
-      .join('');
-
-    return `
-        <?xml version="1.0" encoding="UTF-8"?>
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-                 xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-                 xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
-                 xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
-            <cbc:ProfileID>reporting:1.0</cbc:ProfileID>
-            <cbc:ID>${invoice.number}</cbc:ID>
-            <cbc:UUID>${invoice.uuid}</cbc:UUID>
-            <cbc:IssueDate>${formatDate(invoice.issueDate)}</cbc:IssueDate>
-            <cbc:InvoiceTypeCode name="${invoice.InvoiceTypeCodeName}">${invoice.invoiceTypeCode}</cbc:InvoiceTypeCode>
-            <cbc:Note>${invoice.note || 'No additional notes'}</cbc:Note>
-            <cbc:DocumentCurrencyCode>${invoice.documentCurrency}</cbc:DocumentCurrencyCode>
-            <cbc:TaxCurrencyCode>${invoice.taxCurrency}</cbc:TaxCurrencyCode>
-            <cac:AdditionalDocumentReference>
-                <cbc:ID>ICV</cbc:ID>
-                <cbc:UUID>${invoice.number}</cbc:UUID>
-            </cac:AdditionalDocumentReference>
-            <cac:AccountingSupplierParty>
-                <cac:Party>
-                    <cac:PostalAddress>
-                        <cac:Country>
-                            <cbc:IdentificationCode>JO</cbc:IdentificationCode>
-                        </cac:Country>
-                    </cac:PostalAddress>
-                    <cac:PartyTaxScheme>
-                        <cbc:CompanyID>${company.taxNumber || 'Unknown'}</cbc:CompanyID>
-                        <cac:TaxScheme>
-                            <cbc:ID>VAT</cbc:ID>
-                        </cac:TaxScheme>
-                    </cac:PartyTaxScheme>
-                    <cac:PartyLegalEntity>
-                        <cbc:RegistrationName>${company.legalName || 'Unknown Supplier'}</cbc:RegistrationName>
-                    </cac:PartyLegalEntity>
-                </cac:Party>
-            </cac:AccountingSupplierParty>
-            <cac:AccountingCustomerParty>
-                <cac:Party>
-                    <cac:PartyIdentification>
-                        <cbc:ID schemeID="${invoice.customer.schemeId}">${invoice.customer.identification}</cbc:ID>
-                    </cac:PartyIdentification>
-                    <cac:PostalAddress>
-                        <cbc:PostalZone>${invoice.customer.postalCode || '00000'}</cbc:PostalZone>
-                        <cbc:CountrySubentityCode>JO-AZ</cbc:CountrySubentityCode>
-                        <cac:Country>
-                            <cbc:IdentificationCode>JO</cbc:IdentificationCode>
-                        </cac:Country>
-                    </cac:PostalAddress>
-                    <cac:PartyTaxScheme>
-                        <cbc:CompanyID>${invoice.customer.accountId}</cbc:CompanyID>
-                        <cac:TaxScheme>
-                            <cbc:ID>VAT</cbc:ID>
-                        </cac:TaxScheme>
-                    </cac:PartyTaxScheme>
-                    <cac:PartyLegalEntity>
-                        <cbc:RegistrationName>${invoice.customer.name}</cbc:RegistrationName>
-                    </cac:PartyLegalEntity>
-                </cac:Party>
-                <cac:AccountingContact>
-                    <cbc:Telephone>${invoice.customer.phone}</cbc:Telephone>
-                </cac:AccountingContact>
-            </cac:AccountingCustomerParty>
-
-            <cac:SellerSupplierParty>
-		        <cac:Party>
-			        <cac:PartyIdentification>
-				        <cbc:ID>${company.legalId}</cbc:ID>
-			        </cac:PartyIdentification>
-		        </cac:Party>
-	        </cac:SellerSupplierParty>
-
-
-            <cac:TaxTotal>
-                <cbc:TaxAmount currencyID="${invoice.documentCurrency}">${invoice.items.reduce((sum, item) => sum + item.taxAmount, 0)}</cbc:TaxAmount>
-            </cac:TaxTotal>
-
-            <cac:LegalMonetaryTotal>
-                <cbc:TaxExclusiveAmount currencyID="${invoice.documentCurrency}">${invoice.taxExclusiveAmount}</cbc:TaxExclusiveAmount>
-                <cbc:TaxInclusiveAmount currencyID="${invoice.documentCurrency}">${invoice.taxInclusiveAmount}</cbc:TaxInclusiveAmount>
-                <cbc:AllowanceTotalAmount currencyID="${invoice.documentCurrency}">${invoice.allowanceTotalAmount || 0}</cbc:AllowanceTotalAmount>
-                <cbc:PayableAmount currencyID="${invoice.documentCurrency}">${invoice.payableAmount}</cbc:PayableAmount>
-            </cac:LegalMonetaryTotal>
-            ${invoiceLines}
-        </Invoice>
-    `;
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+	<cbc:ProfileID>reporting:1.0</cbc:ProfileID>
+	<cbc:ID>EIN998833</cbc:ID>
+    <cbc:UUID>${invoice.uuid || 'UUID_PLACEHOLDER'}</cbc:UUID>
+	<cbc:IssueDate>2024-12-12</cbc:IssueDate>
+	<cbc:InvoiceTypeCode name="021">388</cbc:InvoiceTypeCode>
+	<cbc:Note>ملاحظات 2</cbc:Note>
+	<cbc:DocumentCurrencyCode>JOD</cbc:DocumentCurrencyCode>
+	<cbc:TaxCurrencyCode>JOD</cbc:TaxCurrencyCode>
+	<cac:AdditionalDocumentReference>
+		<cbc:ID>ICV</cbc:ID>
+		<cbc:UUID>1</cbc:UUID>
+	</cac:AdditionalDocumentReference>
+	<cac:AccountingSupplierParty>
+		<cac:Party>
+			<cac:PostalAddress>
+				<cac:Country>
+					<cbc:IdentificationCode>JO</cbc:IdentificationCode>
+				</cac:Country>
+			</cac:PostalAddress>
+			<cac:PartyTaxScheme>
+                <cbc:CompanyID>178103217</cbc:CompanyID>
+				<cac:TaxScheme>
+					<cbc:ID>VAT</cbc:ID>
+				</cac:TaxScheme>
+			</cac:PartyTaxScheme>
+			<cac:PartyLegalEntity>
+                <cbc:RegistrationName>شركة المصفح التجارية</cbc:RegistrationName>
+			</cac:PartyLegalEntity>
+		</cac:Party>
+	</cac:AccountingSupplierParty>
+	<cac:AccountingCustomerParty>
+		<cac:Party>
+			<cac:PartyIdentification>
+				<cbc:ID schemeID="NIN">9911058007</cbc:ID>
+			</cac:PartyIdentification>
+			<cac:PostalAddress>
+				<cac:Country>
+					<cbc:IdentificationCode>JO</cbc:IdentificationCode>
+				</cac:Country>
+			</cac:PostalAddress>
+			<cac:PartyTaxScheme>
+				<cac:TaxScheme>
+					<cbc:ID>VAT</cbc:ID>
+				</cac:TaxScheme>
+			</cac:PartyTaxScheme>
+			<cac:PartyLegalEntity>
+				<cbc:RegistrationName>الحسين قاسم</cbc:RegistrationName>
+			</cac:PartyLegalEntity>
+		</cac:Party>
+		<cac:AccountingContact>
+			<cbc:Telephone>324323434</cbc:Telephone>
+		</cac:AccountingContact>
+	</cac:AccountingCustomerParty>
+	<cac:SellerSupplierParty>
+		<cac:Party>
+			<cac:PartyIdentification>
+				<cbc:ID>14514141</cbc:ID>
+			</cac:PartyIdentification>
+		</cac:Party>
+	</cac:SellerSupplierParty>
+	<cac:AllowanceCharge>
+		<cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+		<cbc:AllowanceChargeReason>discount</cbc:AllowanceChargeReason>
+		<cbc:Amount currencyID="JO">2.00</cbc:Amount>
+	</cac:AllowanceCharge>
+	<cac:LegalMonetaryTotal>
+		<cbc:TaxExclusiveAmount currencyID="JO">132.00</cbc:TaxExclusiveAmount>
+		<cbc:TaxInclusiveAmount currencyID="JO">130.00</cbc:TaxInclusiveAmount>
+		<cbc:AllowanceTotalAmount currencyID="JO">2.00</cbc:AllowanceTotalAmount>
+		<cbc:PayableAmount currencyID="JO">130.00</cbc:PayableAmount>
+	</cac:LegalMonetaryTotal>
+	<cac:InvoiceLine>
+		<cbc:ID>1</cbc:ID>
+		<cbc:InvoicedQuantity unitCode="PCE">44.00</cbc:InvoicedQuantity>
+		<cbc:LineExtensionAmount currencyID="JO">130.00</cbc:LineExtensionAmount>
+		<cac:Item>
+			<cbc:Name>test item</cbc:Name>
+		</cac:Item>
+		<cac:Price>
+			<cbc:PriceAmount currencyID="JO">3.00</cbc:PriceAmount>
+			<cac:AllowanceCharge>
+				<cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+				<cbc:AllowanceChargeReason>DISCOUNT</cbc:AllowanceChargeReason>
+				<cbc:Amount currencyID="JO">2.00</cbc:Amount>
+			</cac:AllowanceCharge>
+		</cac:Price>
+	</cac:InvoiceLine>
+</Invoice>`;
   }
 }

@@ -84,8 +84,8 @@ export class InvoiceService {
         invoiceTypeCode: data.invoiceTypeCode || '388',
         InvoiceTypeCodeName: data.InvoiceTypeCodeName || '011',
         note: data.note || null,
-        documentCurrency: data.documentCurrency || 'JOD',
-        taxCurrency: data.taxCurrency || 'JOD',
+        documentCurrency: data.documentCurrency || 'JO',
+        taxCurrency: data.taxCurrency || 'JO',
         customer: {
           connect: {
             id: customer.id,
@@ -125,7 +125,7 @@ export class InvoiceService {
     });
 
     console.log(invoice);
-    
+
     this.xmlReceiverService.sendInvoiceTojofotara(invoice);
 
     return invoice;

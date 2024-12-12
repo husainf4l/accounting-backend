@@ -14,7 +14,7 @@ export class ReceiptService {
     private readonly employeeService: EmployeesService,
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   async getReceiptData() {
     const [clients, accountManagers, cashAccounts, receiptNumber] =
@@ -94,14 +94,14 @@ export class ReceiptService {
         accountId: TransactionAccountId, // Debit Cash Account
         debit: receipt.totalAmount, // Debit the total amount
         credit: null,
-        currency: 'JOD',
+        currency: 'JO',
         notes: `Receipt payment for client ${clientId}`,
       },
       {
         accountId: clientId, // Credit Client Account
         debit: null,
         credit: receipt.totalAmount, // Credit the total amount
-        currency: 'JOD',
+        currency: 'JO',
         notes: `Payment received from client ${clientId}`,
       },
     ];
