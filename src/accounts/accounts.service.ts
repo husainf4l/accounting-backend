@@ -26,6 +26,7 @@ export class AccountsService {
     // Fetch account details
     const accountDetails = await this.prisma.account.findUnique({
       where: { id: accountId },
+      include: { transactions: true },
     });
 
     if (!accountDetails) {
@@ -73,12 +74,7 @@ export class AccountsService {
 
     const totalPages = Math.ceil(totalTransactions / limit);
 
-    // Fetch invoices (if applicable)
-    const invoices = await this.prisma.invoice.findMany({
-      where: { customerId: accountId },
-    });
 
-    // Calculate running balances
     let runningBalance = openingBalance;
     const transactionsWithBalance = transactions.map((transaction) => {
       const { debit, credit } = transaction;
@@ -91,12 +87,7 @@ export class AccountsService {
       accountDetails,
       openingBalance,
       transactions: transactionsWithBalance,
-      invoices,
-      summary: {
-        totalDebits: transactions.reduce((sum, t) => sum + (t.debit || 0), 0),
-        totalCredits: transactions.reduce((sum, t) => sum + (t.credit || 0), 0),
-        finalBalance: runningBalance,
-      },
+  
       pagination: {
         totalRecords: totalTransactions,
         currentPage: page,

@@ -22,22 +22,24 @@ model User {
 }
 
 model Company {
-  id                String    @id @default(uuid())
-  name              String
-  legalName         String?
+  id        String  @id @default(uuid())
+  name      String
+  legalName String?
+  legalId   String? @unique
   address           String?
   eInvoiceClientId  String?
   eInvoiceSecretKey String?
+  eInvoiceLink      String?
   whatsAppKey       String?
   phone             String?
-  email             String    @unique
+  email             String  @unique
   website           String?
-  taxNumber         String?   @unique
-  logoImage         String
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  users             User[]
-  invoices          Invoice[]
+  taxNumber         String? @unique
+  logoImage String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  users     User[]
+  invoices  Invoice[]
 }
 
 enum UserRole {

@@ -6,7 +6,7 @@ import { JournalEntryModule } from 'src/journal-entry/journal-entry.module';
 import { EmployeesModule } from 'src/employees/employees.module';
 import { ProductModule } from 'src/product/product.module';
 import { AccountsModule } from 'src/accounts/accounts.module';
-import { HttpModule, HttpService } from '@nestjs/axios';
+import { XmlReceiverModule } from 'src/xml-receiver/xml-receiver.module';
 
 @Module({
   imports: [
@@ -15,10 +15,10 @@ import { HttpModule, HttpService } from '@nestjs/axios';
     EmployeesModule,
     ProductModule,
     AccountsModule,
-    HttpModule
+    XmlReceiverModule,
   ],
   controllers: [InvoiceController],
   providers: [InvoiceService],
   exports: [InvoiceService],
 })
-export class InvoiceModule { }
+export class InvoiceModule {}

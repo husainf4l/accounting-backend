@@ -26,17 +26,32 @@ import { XmlReceiverModule } from './xml-receiver/xml-receiver.module';
 import { SettingsModule } from './settings/settings.module';
 import { GdprModule } from './gdpr/gdpr.module';
 
-
-
-
 @Module({
-  imports: [ChartOfAccountsModule, PrismaModule, JournalEntryModule, ScheduleModule.forRoot(),
-    AuthModule, ConfigModule.forRoot({
+  imports: [
+    ChartOfAccountsModule,
+    PrismaModule,
+    JournalEntryModule,
+    ScheduleModule.forRoot(),
+    AuthModule,
+    ConfigModule.forRoot({
       isGlobal: true,
     }),
-    FirebaseModule, AccountsModule, ClientsModule, InitiateModule, InvoiceModule, EmployeesModule, GeneralLedgerModule, UploadModule, ProductModule, BackupModule, ReceiptModule, XmlReceiverModule, SettingsModule, GdprModule],
+    FirebaseModule,
+    AccountsModule,
+    ClientsModule,
+    InitiateModule,
+    InvoiceModule,
+    EmployeesModule,
+    GeneralLedgerModule,
+    UploadModule,
+    ProductModule,
+    BackupModule,
+    ReceiptModule,
+    XmlReceiverModule,
+    SettingsModule,
+    GdprModule,
+  ],
   controllers: [AppController],
   providers: [AppService, PrismaService, UploadService],
-
 })
-export class AppModule { }
+export class AppModule {}
