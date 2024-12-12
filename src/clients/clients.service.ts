@@ -15,6 +15,9 @@ export class ClientsService {
     async createClient(data: { name: string; email?: string; phone?: string; address?: string }): Promise<any> {
         console.log('Starting createClient function');
 
+
+
+
         // Fetch Accounts Receivable account
         const accountsReceivable = await this.prisma.account.findUnique({
             where: { hierarchyCode: '1.1.3' },
@@ -47,7 +50,6 @@ export class ClientsService {
             });
             console.log('New Account:', newAccount);
 
-            // Create client details
             console.log('Creating client details');
             const clientDetails = await this.prisma.customer.create({
                 data: {
@@ -88,6 +90,7 @@ export class ClientsService {
         });
     }
 
+
     async ensureCustomerExists(clientId: string, clientName: string) {
         const existingCustomer = await this.prisma.customer.findUnique({
             where: { accountId: clientId },
@@ -99,6 +102,7 @@ export class ClientsService {
             data: { name: clientName, accountId: clientId },
         });
     }
+
 
 
 }

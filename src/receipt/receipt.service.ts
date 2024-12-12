@@ -14,7 +14,7 @@ export class ReceiptService {
     private readonly employeeService: EmployeesService,
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async getReceiptData() {
     const [clients, accountManagers, cashAccounts, receiptNumber] =

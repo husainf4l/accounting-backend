@@ -1,0 +1,120 @@
+// model Invoice {
+//     id               String        @id @default(uuid())
+//     invoiceNumber    Int           @unique
+//     customerId       String
+//     accountManagerId String?
+//     accountManager   Employee?     @relation(fields: [accountManagerId], references: [id])
+//     customer         Customer      @relation(fields: [customerId], references: [id])
+//     date             DateTime      @default(now())
+//     total            Float
+//     taxType          TaxType       @default(VAT)
+//     taxAmount        Float
+//     grandTotal       Float
+//     paymentMode      PaymentMode   @default(CASH)
+//     vendorName       String?
+//     createdAt        DateTime      @default(now())
+//     updatedAt        DateTime      @updatedAt
+//     invoiceItems     InvoiceItem[]
+// }
+
+// model InvoiceItem {
+//     id          String   @id @default(uuid())
+//     invoiceId   String
+//     invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+//     productId   String
+//     product     Product  @relation(fields: [productId], references: [id])
+//     quantity    Int      @default(1)
+//     unitPrice   Float    @default(0.0)
+//     discount    Float    @default(0.0)
+//     taxAmount   Float    @default(0.0)
+//     totalAmount Float    @default(0.0)
+//     createdAt   DateTime @default(now())
+//     updatedAt   DateTime @updatedAt
+// }
+
+model Invoice {
+  id                   String               @id @default(cuid())
+  uuid                 String               @unique @default(dbgenerated("gen_random_uuid()")) // Generate UUID as default
+  number               Int                  @unique // Sequential invoice number
+  issueDate            DateTime             @default(now()) // Add default value
+  invoiceTypeCode      String               @default("388") // Default to "388" for new invoices
+  note                 String? // Optional remarks
+  documentCurrency     String               @default("JOD")
+  taxCurrency          String               @default("JOD")
+  companyId            String?
+  company              Company?             @relation(fields: [companyId], references: [id])
+  customerId           String?
+  customer             Customer?            @relation(fields: [customerId], references: [id])
+  additionalDocuments  AdditionalDocument[]
+  items                InvoiceItem[]
+  taxExclusiveAmount   Float                @default(0.0) // Add default value
+  taxInclusiveAmount   Float                @default(0.0) // Add default value
+  InvoiceTypeCodeName  String?              @default("011") //011 is cash and 021 is credit
+  allowanceTotalAmount Float? // Total discount
+  payableAmount        Float                @default(0.0) // Add default value
+  billingReferences    BillingReference[]
+  employeeId           String? // Use if employees are separate
+  employee             Employee?            @relation(fields: [employeeId], references: [id])
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime?            @updatedAt
+  Seller               Seller?              @relation(fields: [sellerId], references: [id])
+  sellerId             String?
+  Buyer                Buyer?               @relation(fields: [buyerId], references: [id])
+  buyerId              String?
+  User                 User?                @relation(fields: [userId], references: [id])
+  userId               String?
+  isSubmitted          Boolean              @default(false)
+}
+
+model AdditionalDocument {
+  id            String  @id @default(cuid())
+  referenceId   String // ICV reference
+  referenceUUID String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id])
+  invoiceId     String
+}
+
+model BillingReference {
+  id                String  @id @default(cuid())
+  invoiceId         String
+  originalInvoiceId String // ID of the referenced invoice
+  originalUUID      String // UUID of the referenced invoice
+  description       String? // Total value or additional info
+  invoice           Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model Seller {
+  id          String    @id @default(cuid())
+  companyId   String    @unique // TIN (Taxpayer Identification Number)
+  name        String // Registered name
+  countryCode String    @default("JO")
+  invoices    Invoice[]
+}
+
+model Buyer {
+  id             String    @id @default(cuid())
+  identification String // NIN, Passport, or TIN
+  schemeId       String // Scheme type (e.g., TN, PN, NIN)
+  name           String
+  postalCode     String
+  countryCode    String    @default("JO")
+  phone          String?
+  invoices       Invoice[]
+}
+
+model InvoiceItem {
+  id                  String   @id @default(cuid())
+  invoiceId           String
+  invoice             Invoice  @relation(fields: [invoiceId], references: [id])
+  name                String // Good or service description
+  quantity            Float
+  unitPrice           Float
+  discountAmount      Float?
+  lineExtensionAmount Float // Unit Price * Quantity - Discount
+  taxAmount           Float // Tax value on the item
+  roundingAmount      Float? // Total value with rounding and tax
+  taxCategory         String // Z (Exempt), O (0%), S (Standard %)
+  taxPercent          Float // Tax percentage (e.g., 7%, 16%)
+  Product             Product? @relation(fields: [productId], references: [id])
+  productId           String?
+}

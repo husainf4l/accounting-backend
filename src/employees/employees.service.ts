@@ -13,7 +13,7 @@ export class EmployeesService {
         console.log('Starting createEmployee function');
         const employeesLiability = await this.prisma.account.findUnique({
             where: {
-                hierarchyCode: '2.1.3',
+                hierarchyCode: '2.1.1',
             },
             select: { id: true }
         });
@@ -45,8 +45,8 @@ export class EmployeesService {
             console.log('Creating employe details');
             const employeeDetails = await this.prisma.employee.create({
                 data: {
-                    accountId: newAccount.id,
-                    displayName: data.name || null,
+                    // accountId: newAccount.id,
+                    // displayName: data.name || null,
                 },
             });
             console.log('Employee Details:', employeeDetails);
@@ -65,7 +65,7 @@ export class EmployeesService {
 
     async getAccountManagers() {
         return this.prisma.employee.findMany({
-            select: { id: true, displayName: true },
+            select: { id: true, name: true },
         });
     }
 

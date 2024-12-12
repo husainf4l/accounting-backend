@@ -1,38 +1,62 @@
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String    @id @default(uuid())
+  email        String    @unique
   password     String
   phoneNumber  String
-  userName     String   @unique
+  userName     String    @unique
   name         String
   fcmToken     String?
-  profileImage String   @default("https://firebasestorage.googleapis.com/v0/b/gixatco.firebasestorage.app/o/settings%2Fshared%2FuserDefult.png?alt=media&token=fd30d796-77fc-4ca5-86c9-9494c243d81e")
-  role         UserRole @default(USER)
+  profileImage String    @default("default_image_url")
+  role         UserRole  @default(USER)
   companyId    String?
-  company      Company? @relation(fields: [companyId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  company      Company?  @relation(fields: [companyId], references: [id])
+  position     String?
+  department   String?
+  hireDate     DateTime?
+  salary       Float?
+  isActive     Boolean   @default(true)
+  invoices     Invoice[]
+  receipts     Receipt[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model Company {
-  id             String   @id @default(uuid())
-  name           String
-  address        String?
-  einvoiceSecret String?
-  einvoiceKey    String?
-  whatsAppKey    String?
-  phone          String?
-  email          String   @unique
-  website        String?
-  taxNumber      String
-  logoImage      String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  users          User[]
+  id                String    @id @default(uuid())
+  name              String
+  legalName         String?
+  address           String?
+  eInvoiceClientId  String?
+  eInvoiceSecretKey String?
+  whatsAppKey       String?
+  phone             String?
+  email             String    @unique
+  website           String?
+  taxNumber         String?   @unique
+  logoImage         String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  users             User[]
+  invoices          Invoice[]
 }
 
 enum UserRole {
   USER
   ADMIN
   SUPERADMIN
+}
+
+model Employee {
+  id         String    @id @default(uuid())
+  name       String?
+  userId     String?   @unique
+  position   String?
+  department String?
+  hireDate   DateTime?
+  salary     Float?
+  isActive   Boolean   @default(true)
+  invoices   Invoice[]
+  receipts   Receipt[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }

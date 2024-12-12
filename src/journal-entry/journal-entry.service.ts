@@ -79,47 +79,91 @@ export class JournalEntryService {
 
 
     async createInvoiceJournalEntry(data: any, accounts: any) {
+
+        const InvoiceTypeCodeName = data.InvoiceTypeCodeName
+
+        const transaction = InvoiceTypeCodeName == "021" ? [
+            {
+                accountId: data.clientId,
+                debit: data.taxInclusiveAmount,
+                credit: null,
+                currency: 'JOD',
+                notes: 'Invoice payment received',
+            },
+            {
+                accountId: accounts.salesTax.id,
+                debit: null,
+                credit: data.taxAmount,
+                currency: 'JOD',
+                notes: 'Sales tax recorded',
+            },
+            {
+                accountId: accounts.salesRevenue.id,
+                debit: null,
+                credit: data.taxExclusiveAmount,
+                currency: 'JOD',
+                notes: 'Revenue recognized',
+            },
+            {
+                accountId: accounts.cogs.id,
+                debit: accounts.totalCOGS,
+                credit: null,
+                currency: 'JOD',
+                notes: 'Cost of goods sold recorded',
+            },
+            {
+                accountId: accounts.inventoryAccount.id,
+                debit: null,
+                credit: accounts.totalCOGS,
+                currency: 'JOD',
+                notes: 'Inventory reduced for sold items',
+            },
+        ] :
+            [
+                {
+                    accountId: data.cashAccountId,
+                    debit: data.taxInclusiveAmount,
+                    credit: null,
+                    currency: 'JOD',
+                    notes: 'Invoice payment received',
+                },
+                {
+                    accountId: accounts.salesTax.id,
+                    debit: null,
+                    credit: data.taxAmount,
+                    currency: 'JOD',
+                    notes: 'Sales tax recorded',
+                },
+                {
+                    accountId: accounts.salesRevenue.id,
+                    debit: null,
+                    credit: data.taxExclusiveAmount,
+                    currency: 'JOD',
+                    notes: 'Revenue recognized',
+                },
+                {
+                    accountId: accounts.cogs.id,
+                    debit: accounts.totalCOGS,
+                    credit: null,
+                    currency: 'JOD',
+                    notes: 'Cost of goods sold recorded',
+                },
+                {
+                    accountId: accounts.inventoryAccount.id,
+                    debit: null,
+                    credit: accounts.totalCOGS,
+                    currency: 'JOD',
+                    notes: 'Inventory reduced for sold items',
+                },
+            ]
+
+
+
         return this.prisma.journalEntry.create({
             data: {
                 date: new Date(),
                 transactions: {
-                    create: [
-                        {
-                            accountId: data.clientId,
-                            debit: data.grandTotal,
-                            credit: null,
-                            currency: 'JOD',
-                            notes: 'Invoice payment received',
-                        },
-                        {
-                            accountId: accounts.salesTax.id,
-                            debit: null,
-                            credit: data.taxAmount,
-                            currency: 'JOD',
-                            notes: 'Sales tax recorded',
-                        },
-                        {
-                            accountId: accounts.salesRevenue.id,
-                            debit: null,
-                            credit: data.total,
-                            currency: 'JOD',
-                            notes: 'Revenue recognized',
-                        },
-                        {
-                            accountId: accounts.cogs.id,
-                            debit: accounts.totalCOGS,
-                            credit: null,
-                            currency: 'JOD',
-                            notes: 'Cost of goods sold recorded',
-                        },
-                        {
-                            accountId: accounts.inventoryAccount.id,
-                            debit: null,
-                            credit: accounts.totalCOGS,
-                            currency: 'JOD',
-                            notes: 'Inventory reduced for sold items',
-                        },
-                    ],
+                    create: transaction
                 },
             },
             include: { transactions: true },

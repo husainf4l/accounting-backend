@@ -38,22 +38,6 @@ model Account {
   GeneralLedger   GeneralLedger[]
 }
 
-model Employee {
-  id             String    @id @default(uuid())
-  accountId      String    @unique
-  position       String?
-  displayName    String
-  department     String?
-  hireDate       DateTime?
-  salary         Float?
-  commissionRate Float?
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  Invoice        Invoice[]
-  Receipt        Receipt[]
-}
-
 model BankDetails {
   id        String @id @default(uuid())
   accountId String @unique
@@ -91,37 +75,24 @@ model JournalEntry {
 }
 
 model Customer {
-  id        String     @id @default(uuid())
-  name      String
-  accountId String     @unique
-  email     String?
-  phone     String?
-  address   String?
-  invoices  Invoice[]
-  contracts Contract[]
-  createdAt DateTime   @default(now())
-  Receipt   Receipt[]
+  id             String     @id @default(cuid())
+  identification String     @default("Unknown")
+  schemeId       String     @default("Unknown")
+  name           String
+  postalCode     String?
+  countryCode    String     @default("JO")
+  phone          String?
+  email          String?
+  address        String?
+  invoices       Invoice[]
+  contracts      Contract[]
+  receipts       Receipt[]
+  accountId      String     @unique
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime?  @updatedAt
 }
 
 // Invoice Model
-model Invoice {
-  id               String        @id @default(uuid())
-  invoiceNumber    Int           @unique
-  customerId       String
-  accountManagerId String?
-  accountManager   Employee?     @relation(fields: [accountManagerId], references: [id])
-  customer         Customer      @relation(fields: [customerId], references: [id])
-  date             DateTime      @default(now())
-  total            Float
-  taxType          TaxType       @default(VAT)
-  taxAmount        Float
-  grandTotal       Float
-  paymentMode      PaymentMode   @default(CASH)
-  vendorName       String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  invoiceItems     InvoiceItem[]
-}
 
 model Receipt {
   id                   String      @id @default(uuid())
@@ -139,6 +110,8 @@ model Receipt {
   notes                String?
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
+  User                 User?       @relation(fields: [userId], references: [id])
+  userId               String?
 }
 
 model Cheque {
@@ -239,21 +212,6 @@ model Product {
   updatedAt      DateTime         @updatedAt
   invoices       InvoiceItem[]
   warehouses     WarehouseStock[]
-}
-
-model InvoiceItem {
-  id          String   @id @default(uuid())
-  invoiceId   String
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  quantity    Int      @default(1)
-  unitPrice   Float    @default(0.0)
-  discount    Float    @default(0.0)
-  taxAmount   Float    @default(0.0)
-  totalAmount Float    @default(0.0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model Warehouse {
