@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+	xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+	xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+	xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
 	<cbc:ProfileID>reporting:1.0</cbc:ProfileID>
-	<cbc:ID>EIN998833</cbc:ID>
-    <cbc:UUID>${invoice.uuid || 'UUID_PLACEHOLDER'}</cbc:UUID>
-	<cbc:IssueDate>2024-12-10</cbc:IssueDate>
-	<cbc:InvoiceTypeCode name="021">388</cbc:InvoiceTypeCode>
-	<cbc:Note>ملاحظات 2</cbc:Note>
+	<cbc:ID>EIN000001</cbc:ID>
+	<cbc:UUID>8a227dae-a164-4e56-8c92-9c5cc36f373b</cbc:UUID>
+	<cbc:IssueDate>2024-12-11</cbc:IssueDate>
+	<cbc:InvoiceTypeCode name="012">388</cbc:InvoiceTypeCode>
+	<cbc:Note>Invoice description or remark</cbc:Note>
 	<cbc:DocumentCurrencyCode>JOD</cbc:DocumentCurrencyCode>
 	<cbc:TaxCurrencyCode>JOD</cbc:TaxCurrencyCode>
+	<cbc:LineCountNumeric>1</cbc:LineCountNumeric>
 	<cac:AdditionalDocumentReference>
 		<cbc:ID>ICV</cbc:ID>
 		<cbc:UUID>1</cbc:UUID>
@@ -20,71 +24,87 @@
 				</cac:Country>
 			</cac:PostalAddress>
 			<cac:PartyTaxScheme>
-                <cbc:CompanyID>${company.taxNumber || '000000000'}</cbc:CompanyID>
+				<cbc:CompanyID>178103217</cbc:CompanyID>
 				<cac:TaxScheme>
 					<cbc:ID>VAT</cbc:ID>
 				</cac:TaxScheme>
 			</cac:PartyTaxScheme>
 			<cac:PartyLegalEntity>
-                <cbc:RegistrationName>${company.legalName || 'Unknown Supplier'}</cbc:RegistrationName>
+				<cbc:RegistrationName>شركة المصفح التجاريه</cbc:RegistrationName>
 			</cac:PartyLegalEntity>
 		</cac:Party>
 	</cac:AccountingSupplierParty>
 	<cac:AccountingCustomerParty>
 		<cac:Party>
 			<cac:PartyIdentification>
-				<cbc:ID schemeID="NIN">9911058007</cbc:ID>
+				<cbc:ID schemeID="TN">129341371</cbc:ID>
 			</cac:PartyIdentification>
 			<cac:PostalAddress>
-				<cbc:PostalZone>23432</cbc:PostalZone>
+				<cbc:PostalZone>11941</cbc:PostalZone>
+				<cbc:CountrySubentityCode>JO-AM</cbc:CountrySubentityCode>
 				<cac:Country>
 					<cbc:IdentificationCode>JO</cbc:IdentificationCode>
 				</cac:Country>
 			</cac:PostalAddress>
 			<cac:PartyTaxScheme>
+				<cbc:CompanyID>200131354</cbc:CompanyID>
 				<cac:TaxScheme>
 					<cbc:ID>VAT</cbc:ID>
 				</cac:TaxScheme>
 			</cac:PartyTaxScheme>
 			<cac:PartyLegalEntity>
-				<cbc:RegistrationName>الحسين قاسم عبدالله</cbc:RegistrationName>
+				<cbc:RegistrationName>شركة بابايا التجارية</cbc:RegistrationName>
 			</cac:PartyLegalEntity>
 		</cac:Party>
-		<cac:AccountingContact>
-			<cbc:Telephone>324323434</cbc:Telephone>
-		</cac:AccountingContact>
 	</cac:AccountingCustomerParty>
 	<cac:SellerSupplierParty>
 		<cac:Party>
 			<cac:PartyIdentification>
-				<cbc:ID>200163319</cbc:ID>
+				<cbc:ID>14514141</cbc:ID>
 			</cac:PartyIdentification>
 		</cac:Party>
 	</cac:SellerSupplierParty>
 	<cac:AllowanceCharge>
 		<cbc:ChargeIndicator>false</cbc:ChargeIndicator>
 		<cbc:AllowanceChargeReason>discount</cbc:AllowanceChargeReason>
-		<cbc:Amount currencyID="JO">2.00</cbc:Amount>
+		<cbc:Amount currencyID="JO">2.000000000</cbc:Amount>
 	</cac:AllowanceCharge>
+	<cac:TaxTotal>
+		<cbc:TaxAmount currencyID="JO">4.480000000</cbc:TaxAmount>
+	</cac:TaxTotal>
 	<cac:LegalMonetaryTotal>
-		<cbc:TaxExclusiveAmount currencyID="JO">132.00</cbc:TaxExclusiveAmount>
-		<cbc:TaxInclusiveAmount currencyID="JO">130.00</cbc:TaxInclusiveAmount>
-		<cbc:AllowanceTotalAmount currencyID="JO">2.00</cbc:AllowanceTotalAmount>
-		<cbc:PayableAmount currencyID="JO">130.00</cbc:PayableAmount>
+		<cbc:TaxExclusiveAmount currencyID="JO">66.000000000</cbc:TaxExclusiveAmount>
+		<cbc:TaxInclusiveAmount currencyID="JO">68.480000000</cbc:TaxInclusiveAmount>
+		<cbc:AllowanceTotalAmount currencyID="JO">2.000000000</cbc:AllowanceTotalAmount>
+		<cbc:PayableAmount currencyID="JO">68.480000000</cbc:PayableAmount>
 	</cac:LegalMonetaryTotal>
 	<cac:InvoiceLine>
 		<cbc:ID>1</cbc:ID>
-		<cbc:InvoicedQuantity unitCode="PCE">44.00</cbc:InvoicedQuantity>
-		<cbc:LineExtensionAmount currencyID="JO">130.00</cbc:LineExtensionAmount>
+		<cbc:InvoicedQuantity unitCode="PCE">33.000000000</cbc:InvoicedQuantity>
+		<cbc:LineExtensionAmount currencyID="JO">64.000000000</cbc:LineExtensionAmount>
+		<cac:TaxTotal>
+			<cbc:TaxAmount currencyID="JO">4.480000000</cbc:TaxAmount>
+			<cbc:RoundingAmount currencyID="JO">68.480000000</cbc:RoundingAmount>
+			<cac:TaxSubtotal>
+				<cbc:TaxAmount currencyID="JO">4.480000000</cbc:TaxAmount>
+				<cac:TaxCategory>
+					<cbc:ID schemeAgencyID="6" schemeID="UN/ECE 5305">S</cbc:ID>
+					<cbc:Percent>7.00</cbc:Percent>
+					<cac:TaxScheme>
+						<cbc:ID schemeAgencyID="6" schemeID="UN/ECE 5153">VAT</cbc:ID>
+					</cac:TaxScheme>
+				</cac:TaxCategory>
+			</cac:TaxSubtotal>
+		</cac:TaxTotal>
 		<cac:Item>
 			<cbc:Name>زهره</cbc:Name>
 		</cac:Item>
 		<cac:Price>
-			<cbc:PriceAmount currencyID="JO">3.00</cbc:PriceAmount>
+			<cbc:PriceAmount currencyID="JO">2.000000000</cbc:PriceAmount>
 			<cac:AllowanceCharge>
 				<cbc:ChargeIndicator>false</cbc:ChargeIndicator>
 				<cbc:AllowanceChargeReason>DISCOUNT</cbc:AllowanceChargeReason>
-				<cbc:Amount currencyID="JO">2.00</cbc:Amount>
+				<cbc:Amount currencyID="JO">2.000000000</cbc:Amount>
 			</cac:AllowanceCharge>
 		</cac:Price>
 	</cac:InvoiceLine>

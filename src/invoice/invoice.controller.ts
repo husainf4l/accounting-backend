@@ -1,9 +1,10 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
+import { XmlReceiverService } from 'src/xml-receiver/xml-receiver.service';
 
 @Controller('invoice')
 export class InvoiceController {
-    constructor(private readonly invoiceService: InvoiceService) { }
+    constructor(private readonly invoiceService: InvoiceService, private readonly xmlReceiverService: XmlReceiverService) { }
 
 
 
@@ -25,6 +26,20 @@ export class InvoiceController {
     @Get('invoices-data')
     async getInvoicesDetails() {
         return this.invoiceService.getInvoicesDetails();
+    }
+
+
+    @Post('submitEinvoice')
+    async sendInvoice(@Body() invoice: any): Promise<any> {
+        try {
+            const result = await this.xmlReceiverService.sendInvoiceTojofotara(invoice);
+            if (result.status === 'ERROR') {
+                return { success: false, error: result.message, details: result.details };
+            }
+            return { success: true, data: result };
+        } catch (error) {
+            return { success: false, error: 'Unexpected error', details: error.message };
+        }
     }
 
 }

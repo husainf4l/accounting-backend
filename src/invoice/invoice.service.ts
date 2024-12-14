@@ -17,7 +17,7 @@ export class InvoiceService {
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
     private readonly xmlReceiverService: XmlReceiverService,
-  ) {}
+  ) { }
 
   private async getNextInvoiceNumber() {
     const lastInvoice = await this.prisma.invoice.findFirst({
@@ -160,4 +160,7 @@ export class InvoiceService {
 
     return invoices; // Return the invoices with customer details added
   }
+
+
+
 }
