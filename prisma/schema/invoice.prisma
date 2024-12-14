@@ -121,12 +121,13 @@ model InvoiceItem {
 }
 
 model EINV {
-  id            String  @id @default(uuid())
-  EINV_RESULTS  String?
-  EINV_STATUS   String?
-  EINV_QR       String?
-  EINV_NUM      String?
-  EINV_INV_UUID String?
-  invoiceId     String
-  invoice       Invoice @relation(fields: [invoiceId], references: [id])
+  id                  String  @id @default(uuid())
+  EINV_RESULTS        String?
+  EINV_STATUS         String?
+  EINV_QR             String?
+  EINV_NUM            String?
+  EINV_INV_UUID       String?
+  EINV_SINGED_INVOICE String?
+  invoiceId           String
+  invoice             Invoice @relation(fields: [invoiceId], references: [id])
 }
