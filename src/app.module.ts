@@ -25,6 +25,7 @@ import { ReceiptModule } from './receipt/receipt.module';
 import { XmlReceiverModule } from './xml-receiver/xml-receiver.module';
 import { SettingsModule } from './settings/settings.module';
 import { GdprModule } from './gdpr/gdpr.module';
+import { FinancialModule } from './financial/financial.module';
 
 @Module({
   imports: [
@@ -50,8 +51,9 @@ import { GdprModule } from './gdpr/gdpr.module';
     XmlReceiverModule,
     SettingsModule,
     GdprModule,
+    FinancialModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, UploadService],
 })
-export class AppModule {}
+export class AppModule { }

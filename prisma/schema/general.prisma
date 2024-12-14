@@ -5,6 +5,7 @@ enum AccountType {
   EQUITY
   REVENUE
   EXPENSE
+  TRADEEXPENSES
 }
 
 enum TaxType {
