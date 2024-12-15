@@ -1,0 +1,56 @@
+generator client {
+    provider = "prisma-client-js"
+    output   = "./generated/tenant-client" // Optional, separates tenant client for clarity
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL") // This will be dynamically set for each tenant database
+}
+
+model Employee {
+    id        Int      @id @default(autoincrement())
+    firstName String
+    lastName  String
+    email     String   @unique
+    position  String // Job title or role
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Product {
+    id          Int           @id @default(autoincrement())
+    name        String
+    description String?
+    price       Float
+    stock       Int           @default(0)
+    createdAt   DateTime      @default(now())
+    updatedAt   DateTime      @updatedAt
+    InvoiceItem InvoiceItem[]
+}
+
+model Invoice {
+    id            Int           @id @default(autoincrement())
+    invoiceNumber String        @unique
+    totalAmount   Float
+    status        InvoiceStatus @default(PENDING)
+    createdAt     DateTime      @default(now())
+    updatedAt     DateTime      @updatedAt
+    items         InvoiceItem[]
+}
+
+model InvoiceItem {
+    id        Int     @id @default(autoincrement())
+    invoiceId Int
+    invoice   Invoice @relation(fields: [invoiceId], references: [id])
+    productId Int
+    product   Product @relation(fields: [productId], references: [id])
+    quantity  Int
+    price     Float
+}
+
+enum InvoiceStatus {
+    PENDING
+    PAID
+    CANCELLED
+}
