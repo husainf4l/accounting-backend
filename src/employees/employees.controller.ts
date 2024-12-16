@@ -14,12 +14,15 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) {}
+  constructor(private readonly employeesService: EmployeesService) { }
 
   @Post('create-new')
-  async createEmployee(@Body() data: { name: string }) {
+  async createEmployee(@Req() req: any,
+    @Body() data: { name: string }) {
     try {
-      const newEmployee = await this.employeesService.createEmployee(data);
+      const companyId = req.user.companyId;
+
+      const newEmployee = await this.employeesService.createEmployee(data, companyId);
       return {
         message: 'Employee created successfully',
         employee: newEmployee,

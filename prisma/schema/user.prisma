@@ -8,57 +8,60 @@ model User {
   fcmToken     String?
   profileImage String    @default("default_image_url")
   role         UserRole  @default(USER)
-  companyId    String?
-  company      Company?  @relation(fields: [companyId], references: [id])
+  companyId    String? // Active company ID
   position     String?
   department   String?
   hireDate     DateTime?
   salary       Float?
   isActive     Boolean   @default(true)
-  invoices     Invoice[]
-  receipts     Receipt[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  tenantId     Int?
+  invoices     Invoice[]
+  receipts     Receipt[]
+  company      Company?  @relation(fields: [companyId], references: [id])
+  companies    Company[] @relation("UserCompanies")
 }
 
 model Company {
-  id        String  @id @default(uuid())
-  name      String
-  legalName String?
-  legalId   String? @unique
+  id                String    @id @default(uuid())
+  name              String
   address           String?
-  eInvoiceClientId  String?
-  eInvoiceSecretKey String?
-  eInvoiceLink      String?
   whatsAppKey       String?
   phone             String?
-  email             String  @unique
+  email             String    @unique
   website           String?
-  taxNumber         String? @unique
-  logoImage String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  users     User[]
-  invoices  Invoice[]
-}
-
-enum UserRole {
-  USER
-  ADMIN
-  SUPERADMIN
+  taxNumber         String?   @unique
+  logoImage         String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  eInvoiceClientId  String?
+  eInvoiceSecretKey String?
+  legalName         String?
+  eInvoiceLink      String?
+  legalId           String?   @unique
+  invoices          Invoice[]
+  users             User[]    @relation("UserCompanies") // Automatically inferred
+  User              User[]
 }
 
 model Employee {
   id         String    @id @default(uuid())
-  name       String?
   userId     String?   @unique
   position   String?
   department String?
   hireDate   DateTime?
   salary     Float?
   isActive   Boolean   @default(true)
-  invoices   Invoice[]
-  receipts   Receipt[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  name       String?
+  invoices   Invoice[]
+  receipts   Receipt[]
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
 }

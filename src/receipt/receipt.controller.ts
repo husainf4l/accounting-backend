@@ -5,7 +5,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('receipt')
 export class ReceiptController {
-  constructor(private readonly receiptService: ReceiptService) {}
+  constructor(private readonly receiptService: ReceiptService) { }
 
   @UseGuards(AuthGuard('jwt'))
   @Get('receipt-data')
@@ -16,8 +16,10 @@ export class ReceiptController {
   }
 
   @Post()
-  async createReceipt(@Body() createReceiptDto: CreateReceiptDto) {
-    return this.receiptService.createReceipt(createReceiptDto);
+  async createReceipt(@Req() req: any, @Body() createReceiptDto: CreateReceiptDto) {
+    const companyId = req.user.companyId;
+
+    return this.receiptService.createReceipt(createReceiptDto, companyId);
   }
 
   @Get('receipt-list')

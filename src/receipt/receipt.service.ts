@@ -14,7 +14,7 @@ export class ReceiptService {
     private readonly employeeService: EmployeesService,
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async getReceiptData(companyId: string) {
     const [clients, accountManagers, cashAccounts, receiptNumber] =
@@ -37,7 +37,7 @@ export class ReceiptService {
     return (lastReceipt?.receiptNumber || 0) + 1;
   }
 
-  async createReceipt(createReceiptDto: CreateReceiptDto) {
+  async createReceipt(createReceiptDto: CreateReceiptDto, companyId: string) {
     const {
       cheques,
       clientId,
@@ -68,6 +68,7 @@ export class ReceiptService {
     const receipt = await this.prisma.receipt.create({
       data: {
         ...receiptData,
+        companyId: companyId,
         accountId: clientId, // Directly assigning the customerId
         customerId: customer.id,
         accountManagerId: accountManagerId || null, // Optional, can be null
@@ -75,6 +76,7 @@ export class ReceiptService {
         receiptNumber: nextReceiptNumber, // Use the incremented receipt number
         chequeDetails: {
           create: cheques.map((cheque) => ({
+            companyId: companyId,
             chequeNumber: cheque.chequeNumber,
             bankName: cheque.bankName,
             amount: cheque.amount,
@@ -96,6 +98,7 @@ export class ReceiptService {
         credit: null,
         currency: 'JO',
         notes: `Receipt payment for client ${clientId}`,
+        companyId: companyId
       },
       {
         accountId: clientId, // Credit Client Account
@@ -103,13 +106,19 @@ export class ReceiptService {
         credit: receipt.totalAmount, // Credit the total amount
         currency: 'JO',
         notes: `Payment received from client ${clientId}`,
+        companyId: companyId
+
       },
     ];
 
-    const journalEntry = await this.journalService.createJournalEntry({
-      date: new Date(),
-      transactions: transactions,
-    });
+    const journalEntry = await this.journalService.createJournalEntry(
+      companyId,
+      {
+        date: new Date(),
+        transactions: transactions,
+      }
+    );
+
 
     return receipt;
   }

@@ -4,9 +4,9 @@ import { generateHierarchyCode } from 'src/utilties/hierarchy.util';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async createEmployee(data: { name: string }): Promise<any> {
+  async createEmployee(data: { name: string }, companyId: string): Promise<any> {
     console.log('Starting createEmployee function');
     const employeesLiability = await this.prisma.account.findUnique({
       where: {
@@ -31,6 +31,7 @@ export class EmployeesService {
       console.log('Creating new account for the employee');
       const newAccount = await this.prisma.account.create({
         data: {
+          companyId: companyId,
           name: data.name,
           hierarchyCode,
           accountType: 'LIABILITY',

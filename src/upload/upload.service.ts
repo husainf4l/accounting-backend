@@ -17,15 +17,15 @@ export class UploadService {
 
   async saveFile(file: any): Promise<string> {
     const { filename, file: fileStream, mimetype } = file;
-  
+
     if (!mimetype.startsWith('image/')) {
       throw new Error('Only image uploads are allowed');
     }
-  
+
     const filePath = join(this.uploadDir, filename);
-  
+
     const writeStream = fs.createWriteStream(filePath);
-  
+
     try {
       for await (const chunk of fileStream) {
         writeStream.write(chunk);
@@ -34,7 +34,7 @@ export class UploadService {
     } catch (error) {
       throw new Error(`Failed to save file: ${error.message}`);
     }
-  
+
     return filePath;
   }
 

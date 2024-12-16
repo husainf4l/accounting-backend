@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Req } from '@nestjs/common';
 import { JournalEntryService } from './journal-entry.service';
 import { Prisma } from '@prisma/client';
 
@@ -7,11 +7,16 @@ export class JournalEntryController {
     constructor(private readonly journalEntryService: JournalEntryService) { }
 
     @Post()
-    async createJournalEntry(@Body() body: {
-        date: Date;
-        transactions: { accountId: string; amount: number; currency?: string; notes?: string }[];
-    }) {
+    async createJournalEntry(
+        @Req() req: any,
+        @Body()
+        body: {
+            date: Date;
+            transactions: { accountId: string; amount: number; currency?: string; notes?: string }[];
+        }
+    ) {
         const { date, transactions } = body;
+        const companyId = req.user.companyId;
 
         if (!date || !transactions || transactions.length === 0) {
             throw new Error('Date and transactions are required.');
@@ -24,8 +29,23 @@ export class JournalEntryController {
             throw new Error('Transactions are unbalanced. Debit and Credit totals must match.');
         }
 
-        return this.journalEntryService.createJournalEntry(body);
+        // Transform transactions to match the expected structure
+        const transformedTransactions = transactions.map((t) => ({
+            accountId: t.accountId,
+            debit: t.amount > 0 ? t.amount : null,
+            credit: t.amount < 0 ? Math.abs(t.amount) : null,
+            currency: t.currency || 'JO',
+            notes: t.notes || null,
+            companyId: companyId, // Include the company ID
+        }));
+
+        return this.journalEntryService.createJournalEntry(companyId, {
+            date,
+            transactions: transformedTransactions, // Use the transformed structure
+        });
     }
+
+
 
 
 

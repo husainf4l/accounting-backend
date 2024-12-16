@@ -17,7 +17,7 @@ export class InvoiceService {
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
     private readonly xmlReceiverService: XmlReceiverService,
-  ) {}
+  ) { }
 
   private async getNextInvoiceNumber(companyId: string) {
     const lastInvoice = await this.prisma.invoice.findFirst({
@@ -42,10 +42,11 @@ export class InvoiceService {
     return { clients, products, accountManagers, number, cashAccounts };
   }
 
-  async createInvoice(data: any) {
+  async createInvoice(data: any, companyId: string) {
     console.log('Data on post :', data);
 
     const customer = await this.clientsService.ensureCustomerExists(
+      companyId,
       data.clientId,
       data.clientName,
     );
@@ -74,7 +75,8 @@ export class InvoiceService {
       cogs,
       inventoryAccount,
       totalCOGS,
-    });
+
+    }, companyId);
 
     console.log('Data after some transactions :', data);
 

@@ -8,7 +8,7 @@ export class ChartOfAccountsService {
   constructor(
     private prisma: PrismaService,
     private generalLedger: GeneralLedgerService,
-  ) {}
+  ) { }
 
   // Get all accounts
   async getAllAccounts(companyId: string): Promise<Account[]> {
@@ -75,7 +75,6 @@ export class ChartOfAccountsService {
       return 'Chart of Accounts already initialized.';
     }
 
-    // Predefined chart of accounts data
     const accounts = [
       {
         hierarchyCode: '1',
@@ -285,14 +284,15 @@ export class ChartOfAccountsService {
         data: {
           hierarchyCode: account.hierarchyCode,
           name: account.name,
+          companyId: companyId,
           accountType: account.accountType,
           mainAccount: account.mainAccount,
           parentAccountId: parentAccount
             ? (
-                await this.prisma.account.findUnique({
-                  where: { hierarchyCode: parentAccount.hierarchyCode },
-                })
-              )?.id
+              await this.prisma.account.findUnique({
+                where: { hierarchyCode: parentAccount.hierarchyCode },
+              })
+            )?.id
             : null,
           currentBalance: 0,
         },

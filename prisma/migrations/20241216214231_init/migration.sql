@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "AccountType" AS ENUM ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE');
+CREATE TYPE "AccountType" AS ENUM ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE', 'TRADEEXPENSES');
 
 -- CreateEnum
 CREATE TYPE "TaxType" AS ENUM ('VAT', 'ZERO_RATE', 'EXEMPT');
@@ -79,6 +79,7 @@ CREATE TABLE "Customer" (
     "address" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3),
+    "accountId" TEXT NOT NULL,
 
     CONSTRAINT "Customer_pkey" PRIMARY KEY ("id")
 );
@@ -262,6 +263,9 @@ CREATE TABLE "Invoice" (
     "sellerId" TEXT,
     "buyerId" TEXT,
     "userId" TEXT,
+    "isSubmitted" BOOLEAN NOT NULL DEFAULT false,
+    "number" INTEGER NOT NULL,
+    "InvoiceTypeCodeName" TEXT DEFAULT '011',
 
     CONSTRAINT "Invoice_pkey" PRIMARY KEY ("id")
 );
@@ -329,6 +333,20 @@ CREATE TABLE "InvoiceItem" (
 );
 
 -- CreateTable
+CREATE TABLE "EINV" (
+    "id" TEXT NOT NULL,
+    "EINV_RESULTS" TEXT,
+    "EINV_STATUS" TEXT,
+    "EINV_QR" TEXT,
+    "EINV_NUM" TEXT,
+    "EINV_INV_UUID" TEXT,
+    "invoiceId" TEXT NOT NULL,
+    "EINV_SINGED_INVOICE" TEXT,
+
+    CONSTRAINT "EINV_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -347,6 +365,7 @@ CREATE TABLE "User" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "tenantId" INTEGER,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -356,16 +375,19 @@ CREATE TABLE "Company" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "address" TEXT,
-    "einvoiceSecret" TEXT,
-    "einvoiceKey" TEXT,
     "whatsAppKey" TEXT,
     "phone" TEXT,
     "email" TEXT NOT NULL,
     "website" TEXT,
-    "taxNumber" TEXT NOT NULL,
+    "taxNumber" TEXT,
     "logoImage" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "eInvoiceClientId" TEXT,
+    "eInvoiceSecretKey" TEXT,
+    "legalName" TEXT,
+    "eInvoiceLink" TEXT,
+    "legalId" TEXT,
 
     CONSTRAINT "Company_pkey" PRIMARY KEY ("id")
 );
@@ -381,6 +403,7 @@ CREATE TABLE "Employee" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "name" TEXT,
 
     CONSTRAINT "Employee_pkey" PRIMARY KEY ("id")
 );
@@ -390,6 +413,9 @@ CREATE UNIQUE INDEX "Account_hierarchyCode_key" ON "Account"("hierarchyCode");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "BankDetails_accountId_key" ON "BankDetails"("accountId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Customer_accountId_key" ON "Customer"("accountId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Receipt_receiptNumber_key" ON "Receipt"("receiptNumber");
@@ -404,6 +430,9 @@ CREATE UNIQUE INDEX "Product_barcode_key" ON "Product"("barcode");
 CREATE UNIQUE INDEX "Invoice_uuid_key" ON "Invoice"("uuid");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Invoice_number_key" ON "Invoice"("number");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Seller_companyId_key" ON "Seller"("companyId");
 
 -- CreateIndex
@@ -414,6 +443,12 @@ CREATE UNIQUE INDEX "User_userName_key" ON "User"("userName");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Company_email_key" ON "Company"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Company_taxNumber_key" ON "Company"("taxNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Company_legalId_key" ON "Company"("legalId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Employee_userId_key" ON "Employee"("userId");
@@ -428,10 +463,10 @@ ALTER TABLE "Transaction" ADD CONSTRAINT "Transaction_accountId_fkey" FOREIGN KE
 ALTER TABLE "Transaction" ADD CONSTRAINT "Transaction_journalEntryId_fkey" FOREIGN KEY ("journalEntryId") REFERENCES "JournalEntry"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_accountManagerId_fkey" FOREIGN KEY ("accountManagerId") REFERENCES "Employee"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_accountManagerId_fkey" FOREIGN KEY ("accountManagerId") REFERENCES "Employee"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -452,10 +487,13 @@ ALTER TABLE "Lease" ADD CONSTRAINT "Lease_accountId_fkey" FOREIGN KEY ("accountI
 ALTER TABLE "GeneralLedger" ADD CONSTRAINT "GeneralLedger_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "WarehouseStock" ADD CONSTRAINT "WarehouseStock_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "WarehouseStock" ADD CONSTRAINT "WarehouseStock_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "Warehouse"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WarehouseStock" ADD CONSTRAINT "WarehouseStock_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -468,9 +506,6 @@ ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_employeeId_fkey" FOREIGN KEY ("emp
 
 -- AddForeignKey
 ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_sellerId_fkey" FOREIGN KEY ("sellerId") REFERENCES "Seller"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "Buyer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -486,6 +521,9 @@ ALTER TABLE "InvoiceItem" ADD CONSTRAINT "InvoiceItem_invoiceId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "InvoiceItem" ADD CONSTRAINT "InvoiceItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EINV" ADD CONSTRAINT "EINV_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE SET NULL ON UPDATE CASCADE;

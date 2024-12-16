@@ -4,18 +4,23 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class JournalEntryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async createJournalEntry(data: {
-    date: Date;
-    transactions: {
-      accountId: string;
-      debit?: number;
-      credit?: number;
-      currency?: string;
-      notes?: string;
-    }[];
-  }) {
+  async createJournalEntry(companyId: string,
+
+    data: {
+      date: Date;
+      transactions: {
+        accountId: string;
+        debit?: number;
+        credit?: number;
+        currency?: string;
+        notes?: string;
+        companyId: string;
+      }[];
+
+    },
+  ) {
     const { date, transactions } = data;
 
     // Ensure date is in ISO-8601 format
@@ -35,6 +40,7 @@ export class JournalEntryService {
 
     // Prepare transaction data
     const transactionData = transactions.map((transaction) => ({
+      companyId: 'thiscompanyId',
       accountId: transaction.accountId,
       debit: transaction.debit ?? null, // Use `null` if `undefined`
       credit: transaction.credit ?? null, // Use `null` if `undefined`
@@ -45,9 +51,10 @@ export class JournalEntryService {
     // Create the journal entry
     return this.prisma.journalEntry.create({
       data: {
-        date: isoDate, // Pass the ISO-formatted date
+        date: isoDate,
+        companyId: companyId,
         transactions: {
-          create: transactionData, // Attach the prepared transaction data
+          create: transactionData,
         },
       },
     });
@@ -78,89 +85,110 @@ export class JournalEntryService {
     });
   }
 
-  async createInvoiceJournalEntry(data: any, accounts: any) {
+  async createInvoiceJournalEntry(data: any, accounts: any, companyId: string) {
     const InvoiceTypeCodeName = data.InvoiceTypeCodeName;
 
     const transaction =
       InvoiceTypeCodeName == '021'
         ? [
-            {
-              accountId: data.clientId,
-              debit: data.taxInclusiveAmount,
-              credit: null,
-              currency: 'JO',
-              notes: 'Invoice payment received',
-            },
-            {
-              accountId: accounts.salesTax.id,
-              debit: null,
-              credit: data.taxAmount,
-              currency: 'JO',
-              notes: 'Sales tax recorded',
-            },
-            {
-              accountId: accounts.salesRevenue.id,
-              debit: null,
-              credit: data.taxExclusiveAmount,
-              currency: 'JO',
-              notes: 'Revenue recognized',
-            },
-            {
-              accountId: accounts.cogs.id,
-              debit: accounts.totalCOGS,
-              credit: null,
-              currency: 'JO',
-              notes: 'Cost of goods sold recorded',
-            },
-            {
-              accountId: accounts.inventoryAccount.id,
-              debit: null,
-              credit: accounts.totalCOGS,
-              currency: 'JO',
-              notes: 'Inventory reduced for sold items',
-            },
-          ]
+          {
+            accountId: data.clientId,
+            debit: data.taxInclusiveAmount,
+            credit: null,
+            currency: 'JO',
+            notes: 'Invoice payment received',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.salesTax.id,
+            debit: null,
+            credit: data.taxAmount,
+            currency: 'JO',
+            notes: 'Sales tax recorded',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.salesRevenue.id,
+            debit: null,
+            credit: data.taxExclusiveAmount,
+            currency: 'JO',
+            notes: 'Revenue recognized',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.cogs.id,
+            debit: accounts.totalCOGS,
+            credit: null,
+            currency: 'JO',
+            notes: 'Cost of goods sold recorded',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.inventoryAccount.id,
+            debit: null,
+            credit: accounts.totalCOGS,
+            currency: 'JO',
+            notes: 'Inventory reduced for sold items',
+            companyId: companyId
+
+          },
+        ]
         : [
-            {
-              accountId: data.cashAccountId,
-              debit: data.taxInclusiveAmount,
-              credit: null,
-              currency: 'JO',
-              notes: 'Invoice payment received',
-            },
-            {
-              accountId: accounts.salesTax.id,
-              debit: null,
-              credit: data.taxAmount,
-              currency: 'JO',
-              notes: 'Sales tax recorded',
-            },
-            {
-              accountId: accounts.salesRevenue.id,
-              debit: null,
-              credit: data.taxExclusiveAmount,
-              currency: 'JO',
-              notes: 'Revenue recognized',
-            },
-            {
-              accountId: accounts.cogs.id,
-              debit: accounts.totalCOGS,
-              credit: null,
-              currency: 'JO',
-              notes: 'Cost of goods sold recorded',
-            },
-            {
-              accountId: accounts.inventoryAccount.id,
-              debit: null,
-              credit: accounts.totalCOGS,
-              currency: 'JO',
-              notes: 'Inventory reduced for sold items',
-            },
-          ];
+          {
+            accountId: data.cashAccountId,
+            debit: data.taxInclusiveAmount,
+            credit: null,
+            currency: 'JO',
+            notes: 'Invoice payment received',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.salesTax.id,
+            debit: null,
+            credit: data.taxAmount,
+            currency: 'JO',
+            notes: 'Sales tax recorded',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.salesRevenue.id,
+            debit: null,
+            credit: data.taxExclusiveAmount,
+            currency: 'JO',
+            notes: 'Revenue recognized',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.cogs.id,
+            debit: accounts.totalCOGS,
+            credit: null,
+            currency: 'JO',
+            notes: 'Cost of goods sold recorded',
+            companyId: companyId
+
+          },
+          {
+            accountId: accounts.inventoryAccount.id,
+            debit: null,
+            credit: accounts.totalCOGS,
+            currency: 'JO',
+            notes: 'Inventory reduced for sold items',
+            companyId: companyId
+
+          },
+        ];
 
     return this.prisma.journalEntry.create({
       data: {
         date: new Date(),
+        companyId: companyId,
         transactions: {
           create: transaction,
         },

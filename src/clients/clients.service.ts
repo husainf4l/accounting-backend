@@ -4,9 +4,9 @@ import { generateHierarchyCode } from '../utilties/hierarchy.util';
 
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  async createClient(data: {
+  async createClient(companyId: string, data: {
     name: string;
     email?: string;
     phone?: string;
@@ -40,6 +40,7 @@ export class ClientsService {
       const newAccount = await this.prisma.account.create({
         data: {
           name: data.name,
+          companyId: companyId,
           hierarchyCode,
           accountType: 'ASSET',
           openingBalance: 0.0,
@@ -52,6 +53,7 @@ export class ClientsService {
       console.log('Creating client details');
       const clientDetails = await this.prisma.customer.create({
         data: {
+          companyId: companyId,
           accountId: newAccount.id,
           name: data.name,
           email: data.email || null,
@@ -71,7 +73,7 @@ export class ClientsService {
     }
   }
 
-  
+
   async getClients(companyId: string) {
     const accountsReceivable = await this.prisma.account.findUnique({
       where: { hierarchyCode: '1.1.3' },
@@ -94,7 +96,7 @@ export class ClientsService {
     });
   }
 
-  async ensureCustomerExists(clientId: string, clientName: string) {
+  async ensureCustomerExists(clientId: string, clientName: string, companyId: string) {
     const existingCustomer = await this.prisma.customer.findUnique({
       where: { accountId: clientId },
     });
@@ -102,7 +104,7 @@ export class ClientsService {
     if (existingCustomer) return existingCustomer;
 
     return this.prisma.customer.create({
-      data: { name: clientName, accountId: clientId },
+      data: { name: clientName, accountId: clientId, companyId },
     });
   }
 }

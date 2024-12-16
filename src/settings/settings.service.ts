@@ -18,7 +18,7 @@ export class SettingsService {
     private authService: AuthService,
     @Inject('FIREBASE_APP_OVOVEX')
     private readonly firebaseAppOvovex: admin.app.App,
-  ) {}
+  ) { }
 
   async getCompanySettings(token: string): Promise<any> {
     const companyId = this.authService.getCompanyId(token);

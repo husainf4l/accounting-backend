@@ -1,75 +1,54 @@
-// Enums
-enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  REVENUE
-  EXPENSE
-  TRADEEXPENSES
-}
-
-enum TaxType {
-  VAT
-  ZERO_RATE
-  EXEMPT
-}
-
-enum PaymentMode {
-  CASH
-  ACCOUNTS_RECEIVABLE
-  CHEQUE
-}
-
-// Chart of Accounts Model
 model Account {
-  id              String          @id @default(uuid())
-  hierarchyCode   String          @unique
+  id              String         @id @default(uuid())
+  hierarchyCode   String         @unique
   name            String
+  companyId       String
   accountType     AccountType
-  openingBalance  Float?          @default(0.0)
-  currentBalance  Float           @default(0.0)
+  openingBalance  Float?         @default(0.0)
+  currentBalance  Float          @default(0.0)
   parentAccountId String?
-  parentAccount   Account?        @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
-  children        Account[]       @relation("AccountHierarchy")
-  transactions    Transaction[]
+  mainAccount     Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  parentAccount   Account?       @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  children        Account[]      @relation("AccountHierarchy")
+  GeneralLedger   GeneralLedger?
   leases          Lease[]
-  mainAccount     Boolean         @default(false)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  GeneralLedger   GeneralLedger[]
+  transactions    Transaction[]
 }
 
 model BankDetails {
-  id        String @id @default(uuid())
-  accountId String @unique
-
+  id            String   @id @default(uuid())
+  accountId     String   @unique
   bankName      String
+  companyId     String
   accountNumber String
   iban          String?
   swiftCode     String?
   branchName    String?
-  isActive      Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Transaction {
   id             String       @id @default(uuid())
   accountId      String
-  account        Account      @relation(fields: [accountId], references: [id])
   journalEntryId String
-  journalEntry   JournalEntry @relation("JournalEntryTransactions", fields: [journalEntryId], references: [id])
-  debit          Float? // Use separate fields for debit and credit
-  credit         Float? // Helps differentiate the nature of the transaction
+  debit          Float?
+  companyId      String
+  credit         Float?
   currency       String       @default("JOD")
   notes          String?
   createdAt      DateTime     @default(now())
+  account        Account      @relation(fields: [accountId], references: [id])
+  journalEntry   JournalEntry @relation("JournalEntryTransactions", fields: [journalEntryId], references: [id])
 }
 
 model JournalEntry {
   id           String        @id @default(uuid())
   date         DateTime      @default(now())
+  companyId    String
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[] @relation("JournalEntryTransactions")
@@ -80,89 +59,94 @@ model Customer {
   identification String     @default("Unknown")
   schemeId       String     @default("Unknown")
   name           String
+  companyId      String
   postalCode     String?
   countryCode    String     @default("JO")
   phone          String?
   email          String?
   address        String?
-  invoices       Invoice[]
-  contracts      Contract[]
-  receipts       Receipt[]
-  accountId      String     @unique
   createdAt      DateTime   @default(now())
   updatedAt      DateTime?  @updatedAt
+  accountId      String     @unique
+  contracts      Contract[]
+  invoices       Invoice[]
+  receipts       Receipt[]
 }
-
-// Invoice Model
 
 model Receipt {
   id                   String      @id @default(uuid())
   receiptNumber        Int         @unique
   accountId            String
   customerId           String
-  customer             Customer    @relation(fields: [customerId], references: [id])
-  accountManagerId     String? // Optional
-  accountManager       Employee?   @relation(fields: [accountManagerId], references: [id])
+  companyId            String
+  accountManagerId     String?
   date                 DateTime    @default(now())
   paymentMode          PaymentMode
-  TransactionAccountId String? // Optional for Cash payments
-  chequeDetails        Cheque[] // Multiple cheques for cheque payments
+  TransactionAccountId String?
   totalAmount          Float
   notes                String?
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
-  User                 User?       @relation(fields: [userId], references: [id])
   userId               String?
+  chequeDetails        Cheque[]
+  accountManager       Employee?   @relation(fields: [accountManagerId], references: [id])
+  customer             Customer    @relation(fields: [customerId], references: [id])
+  User                 User?       @relation(fields: [userId], references: [id])
 }
 
 model Cheque {
   id           String   @id @default(uuid())
   receiptId    String
-  receipt      Receipt  @relation(fields: [receiptId], references: [id])
   chequeNumber String
   bankName     String
+  companyId    String
   amount       Float
   date         DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  receipt      Receipt  @relation(fields: [receiptId], references: [id])
 }
 
 model Contract {
   id          String       @id @default(uuid())
   customerId  String
-  customer    Customer     @relation(fields: [customerId], references: [id])
   totalValue  Float
-  obligations Obligation[]
+  companyId   String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  obligations Obligation[]
 }
 
 model Obligation {
   id           String   @id @default(uuid())
   contractId   String
-  contract     Contract @relation(fields: [contractId], references: [id])
+  companyId    String
   description  String
   revenueValue Float
   fulfilled    Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  contract     Contract @relation(fields: [contractId], references: [id])
 }
 
 model Lease {
   id             String   @id @default(uuid())
   accountId      String
-  account        Account  @relation(fields: [accountId], references: [id])
   leaseLiability Float
   rouAsset       Float
-  leaseTerm      Int // Lease term in months
+  companyId      String
+  leaseTerm      Int
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  account        Account  @relation(fields: [accountId], references: [id])
 }
 
 model Salary {
   id          String   @id @default(uuid())
   employeeId  String
   amount      Float
+  companyId   String
   benefit     Float
   paymentDate DateTime
   createdAt   DateTime @default(now())
@@ -173,6 +157,7 @@ model Asset {
   id          String   @id @default(uuid())
   name        String
   value       Float
+  companyId   String
   heldForSale Boolean  @default(false)
   fairValue   Float?
   createdAt   DateTime @default(now())
@@ -183,6 +168,7 @@ model GeneralLedger {
   id        String   @id @default(uuid())
   accountId String   @unique
   balance   Float
+  companyId String
   updatedAt DateTime @updatedAt
   account   Account  @relation(fields: [accountId], references: [id])
 }
@@ -191,6 +177,7 @@ model Product {
   id             String           @id @default(uuid())
   barcode        String?          @unique
   name           String
+  companyId      String
   description    String?
   costPrice      Float            @default(0.0)
   salesPrice     Float            @default(0.0)
@@ -219,18 +206,41 @@ model Warehouse {
   id        String           @id @default(uuid())
   name      String
   location  String?
-  stock     WarehouseStock[]
+  companyId String
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+  stock     WarehouseStock[]
 }
 
 model WarehouseStock {
   id          String    @id @default(uuid())
   warehouseId String
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
   productId   String
-  product     Product   @relation(fields: [productId], references: [id])
+  companyId   String
   stock       Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+  TRADEEXPENSES
+}
+
+enum TaxType {
+  VAT
+  ZERO_RATE
+  EXEMPT
+}
+
+enum PaymentMode {
+  CASH
+  ACCOUNTS_RECEIVABLE
+  CHEQUE
 }
