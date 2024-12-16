@@ -16,12 +16,12 @@ export class ReceiptService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async getReceiptData() {
+  async getReceiptData(companyId: string) {
     const [clients, accountManagers, cashAccounts, receiptNumber] =
       await Promise.all([
-        this.clientsService.getClients(),
-        this.employeeService.getAccountManagers(),
-        this.accountsService.getAccountsUnderCode('1.1.1'),
+        this.clientsService.getClients(companyId),
+        this.employeeService.getAccountManagers(companyId),
+        this.accountsService.getAccountsUnderCode('1.1.1', companyId),
         this.getNextReceiptNumber(),
       ]);
 

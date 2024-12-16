@@ -74,7 +74,6 @@ export class AccountsService {
 
     const totalPages = Math.ceil(totalTransactions / limit);
 
-
     let runningBalance = openingBalance;
     const transactionsWithBalance = transactions.map((transaction) => {
       const { debit, credit } = transaction;
@@ -87,7 +86,7 @@ export class AccountsService {
       accountDetails,
       openingBalance,
       transactions: transactionsWithBalance,
-  
+
       pagination: {
         totalRecords: totalTransactions,
         currentPage: page,
@@ -112,7 +111,7 @@ export class AccountsService {
     return accounts[0];
   }
 
-  async getAccountsUnderCode(hierarchyCode: string) {
+  async getAccountsUnderCode(hierarchyCode: string, companyId: string) {
     const mainAccount = await this.findAccountByHierarchyCode(hierarchyCode);
 
     return this.prisma.account.findMany({

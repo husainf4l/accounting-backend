@@ -5,6 +5,6 @@ import { GeneralLedgerService } from 'src/general-ledger/general-ledger.service'
 
 @Module({
   providers: [ChartOfAccountsService, GeneralLedgerService],
-  controllers: [ChartOfAccountsController]
+  controllers: [ChartOfAccountsController],
 })
-export class ChartOfAccountsModule { }
+export class ChartOfAccountsModule {}

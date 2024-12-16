@@ -8,7 +8,6 @@ import { ProductService } from './product.service';
 export class ProductController {
   constructor(private readonly productsService: ProductService) {}
 
-  
   @Post('upload')
   async uploadProducts(@Req() request: FastifyRequest): Promise<any> {
     // Parse the file from the request
@@ -46,7 +45,8 @@ export class ProductController {
   }
 
   @Get('all-products')
-  async allProducts() {
-    return this.productsService.getProducts();
+  async allProducts(@Req() req: any) {
+    const companyId = req.user.companyId;
+    return this.productsService.getProducts(companyId);
   }
 }

@@ -5,6 +5,6 @@ import { EmployeesController } from './employees.controller';
 @Module({
   controllers: [EmployeesController],
   providers: [EmployeesService],
-  exports: [EmployeesService]
+  exports: [EmployeesService],
 })
-export class EmployeesModule { }
+export class EmployeesModule {}

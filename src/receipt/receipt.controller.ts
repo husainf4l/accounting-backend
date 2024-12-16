@@ -1,14 +1,18 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ReceiptService } from './receipt.service';
 import { CreateReceiptDto } from './dto/CreateReceiptDto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('receipt')
 export class ReceiptController {
-  constructor(private readonly receiptService: ReceiptService) { }
+  constructor(private readonly receiptService: ReceiptService) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('receipt-data')
-  async getReceiptData() {
-    return this.receiptService.getReceiptData();
+  async getReceiptData(@Req() req: any) {
+    const companyId = req.user.companyId;
+
+    return this.receiptService.getReceiptData(companyId);
   }
 
   @Post()

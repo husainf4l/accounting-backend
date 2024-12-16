@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { XmlReceiverService } from 'src/xml-receiver/xml-receiver.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('invoice')
 export class InvoiceController {
@@ -8,9 +9,13 @@ export class InvoiceController {
 
 
 
+    @UseGuards(AuthGuard('jwt'))
     @Get('invoice-data')
-    async getInvoiceClients() {
-        return this.invoiceService.getInvoiceData();
+    async getInvoiceClients(@Req() req: any) {
+      const companyId = req.user.companyId; 
+      console.log('Company ID:', companyId);
+  
+      return this.invoiceService.getInvoiceData(companyId);
     }
 
     @Get('invoice-details/:invoiceId')

@@ -17,10 +17,11 @@ export class InvoiceService {
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
     private readonly xmlReceiverService: XmlReceiverService,
-  ) { }
+  ) {}
 
-  private async getNextInvoiceNumber() {
+  private async getNextInvoiceNumber(companyId: string) {
     const lastInvoice = await this.prisma.invoice.findFirst({
+      where: { companyId: companyId },
       orderBy: { number: 'desc' },
       select: { number: true },
     });
@@ -28,14 +29,14 @@ export class InvoiceService {
     return (lastInvoice?.number || 0) + 1;
   }
 
-  async getInvoiceData() {
+  async getInvoiceData(companyId: string) {
     const [clients, accountManagers, products, number, cashAccounts] =
       await Promise.all([
-        this.clientsService.getClients(),
-        this.employeeService.getAccountManagers(),
-        this.productsService.getProducts(),
-        this.getNextInvoiceNumber(),
-        this.accountsService.getAccountsUnderCode('1.1.1'),
+        this.clientsService.getClients(companyId),
+        this.employeeService.getAccountManagers(companyId),
+        this.productsService.getProducts(companyId),
+        this.getNextInvoiceNumber(companyId),
+        this.accountsService.getAccountsUnderCode('1.1.1', companyId),
       ]);
 
     return { clients, products, accountManagers, number, cashAccounts };
@@ -160,7 +161,4 @@ export class InvoiceService {
 
     return invoices; // Return the invoices with customer details added
   }
-
-
-
 }

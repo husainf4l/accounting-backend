@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ClientsService } from './clients.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('clients')
 export class ClientsController {
@@ -30,8 +31,10 @@ export class ClientsController {
     }
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('all-clients')
-  async getAllClients() {
-    return this.clientsService.getClients();
+  async getAllClients(@Req() req: any) {
+    const companyId = req.user.companyId;
+    return this.clientsService.getClients(companyId);
   }
 }

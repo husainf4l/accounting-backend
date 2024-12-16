@@ -1,48 +1,78 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ChartOfAccountsService } from './chart-of-accounts.service';
 import { Prisma } from '@prisma/client';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('chart-of-accounts')
 export class ChartOfAccountsController {
-    constructor(private readonly chartOfAccountsService: ChartOfAccountsService) { }
+  constructor(
+    private readonly chartOfAccountsService: ChartOfAccountsService,
+  ) {}
 
-    // Get all accounts
-    @Get()
-    async getAllAccounts() {
-        return this.chartOfAccountsService.getAllAccounts();
-    }
+  @UseGuards(AuthGuard('jwt'))
+  @Get()
+  async getAllAccounts(@Req() req: any) {
+    const companyId = req.user.companyId;
 
-    // Get an account by ID
-    @Get(':id')
-    async getAccountById(@Param('id') id: string) {
-        return this.chartOfAccountsService.getAccountById(id);
-    }
+    return this.chartOfAccountsService.getAllAccounts(companyId);
+  }
 
+  // Get an account by ID
+  @Get(':id')
+  async getAccountById(@Req() req: any, @Param('id') id: string) {
+    const companyId = req.user.companyId;
 
-    // Create a new account
-    @Post()
-    async createAccount(@Body() accountData: Prisma.AccountCreateInput) {
-        return this.chartOfAccountsService.createAccount2(accountData);
-    }
+    return this.chartOfAccountsService.getAccountById(id, companyId);
+  }
 
-    // Update an account
-    @Patch(':id')
-    async updateAccount(
-        @Param('id') id: string,
-        @Body() accountData: Prisma.AccountUpdateInput,
-    ) {
-        return this.chartOfAccountsService.updateAccount(id, accountData);
-    }
+  // Create a new account
+  @Post()
+  async createAccount(
+    @Req() req: any,
+    @Body() accountData: Prisma.AccountCreateInput,
+  ) {
+    const companyId = req.user.companyId;
 
-    // Delete an account
-    @Delete(':id')
-    async deleteAccount(@Param('id') id: string) {
-        return this.chartOfAccountsService.deleteAccount(id);
-    }
+    return this.chartOfAccountsService.createAccount2(accountData, companyId);
+  }
 
-    @Post('initialize')
-    async initialize() {
-      return this.chartOfAccountsService.initializeChartOfAccounts();
-    }
-  
+  // Update an account
+  @Patch(':id')
+  async updateAccount(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() accountData: Prisma.AccountUpdateInput,
+  ) {
+    const companyId = req.user.companyId;
+
+    return this.chartOfAccountsService.updateAccount(
+      id,
+      accountData,
+      companyId,
+    );
+  }
+
+  // Delete an account
+  @Delete(':id')
+  async deleteAccount(@Req() req: any, @Param('id') id: string) {
+    const companyId = req.user.companyId;
+
+    return this.chartOfAccountsService.deleteAccount(id, companyId);
+  }
+
+  @Post('initialize')
+  async initialize(@Req() req: any) {
+    const companyId = req.user.companyId;
+    return this.chartOfAccountsService.initializeChartOfAccounts(companyId);
+  }
 }

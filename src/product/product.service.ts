@@ -60,7 +60,7 @@ export class ProductService {
     return { success: true, insertedRows: result.length };
   }
 
-  async getProducts() {
+  async getProducts(companyId: string) {
     const products = await this.prisma.product.findMany({
       orderBy: { name: 'asc' },
     });
