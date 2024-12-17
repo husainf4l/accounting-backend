@@ -1,9 +1,10 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { GeneralLedgerService } from './general-ledger.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('general-ledger')
 export class GeneralLedgerController {
-  constructor(private generalLedgerService: GeneralLedgerService) {}
+  constructor(private generalLedgerService: GeneralLedgerService) { }
 
   @Get('accounts/:id/balance')
   async getAccountBalance(@Param('id') accountId: string) {
@@ -11,9 +12,11 @@ export class GeneralLedgerController {
     return { accountId, balance };
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('update-balances')
-  async updateBalances() {
-    await this.generalLedgerService.updateGeneralLedger();
+  async updateBalances(@Req() req: any,) {
+    const companyId = req.user.companyId;
+    await this.generalLedgerService.updateGeneralLedger(companyId);
     return { message: 'General ledger updated successfully!' };
   }
 }

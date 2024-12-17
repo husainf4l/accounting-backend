@@ -1,18 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountType } from '@prisma/client'; // Import Prisma enums
+import { endOfDay } from 'date-fns';
+
 
 @Injectable()
 export class FinancialService {
     constructor(private prisma: PrismaService) { }
 
-    async getCategoryDetails(categories: AccountType[], startDate: Date, endDate: Date) {
+    async getCategoryDetails(companyId: string, categories: AccountType[], startDate: Date, endDate: Date) {
         const details = [];
         let totalNetBalance = 0;
 
         for (const category of categories) {
             const { _sum: debitSum } = await this.prisma.transaction.aggregate({
                 where: {
+                    companyId: companyId,
                     account: { accountType: category },
                     journalEntry: {
                         date: {
@@ -26,6 +29,7 @@ export class FinancialService {
 
             const { _sum: creditSum } = await this.prisma.transaction.aggregate({
                 where: {
+                    companyId: companyId,
                     account: { accountType: category },
                     journalEntry: {
                         date: {
@@ -54,24 +58,24 @@ export class FinancialService {
         return { details, totalNetBalance };
     }
 
-    /**
-     * Generate a detailed income statement.
-     */
-    async getIncomeStatement(startDate: Date, endDate: Date) {
+
+    async getIncomeStatement(companyId: string, startDate: Date, endDate: Date) {
+        const adjustedEndDate = endOfDay(endDate);
         const revenueCategories = [AccountType.REVENUE];
         const cogsCategories = [AccountType.TRADEEXPENSES];
         const operatingExpenseCategories = [AccountType.EXPENSE];
         const nonOperatingCategories = [AccountType.EXPENSE];
 
         // Fetch details for each section
-        const revenueDetails = await this.getCategoryDetails(revenueCategories, startDate, endDate);
-        const cogsDetails = await this.getCategoryDetails(cogsCategories, startDate, endDate);
+        const revenueDetails = await this.getCategoryDetails(companyId, revenueCategories, startDate, adjustedEndDate);
+        const cogsDetails = await this.getCategoryDetails(companyId, cogsCategories, startDate, adjustedEndDate);
         const operatingExpensesDetails = await this.getCategoryDetails(
+            companyId,
             operatingExpenseCategories,
             startDate,
-            endDate,
+            adjustedEndDate,
         );
-        const nonOperatingDetails = await this.getCategoryDetails(nonOperatingCategories, startDate, endDate);
+        const nonOperatingDetails = await this.getCategoryDetails(companyId, nonOperatingCategories, startDate, adjustedEndDate);
 
         // Adjust values for calculations
         const totalRevenue = revenueDetails.totalNetBalance;

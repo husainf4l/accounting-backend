@@ -6,6 +6,7 @@ import { AuthGuard } from '@nestjs/passport';
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) { }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('create-new')
   async createClient(
     @Req() req: any,

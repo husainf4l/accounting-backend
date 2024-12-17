@@ -123,7 +123,11 @@ export class ReceiptService {
     return receipt;
   }
 
-  async getReceiptList() {
-    return this.prisma.receipt.findMany({ include: { customer: true } });
+  async getReceiptList(companyId) {
+    return this.prisma.receipt.findMany({
+
+      where: { companyId },
+      include: { customer: true }
+    });
   }
 }

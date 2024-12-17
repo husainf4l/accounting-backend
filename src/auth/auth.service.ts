@@ -135,4 +135,29 @@ export class AuthService {
     }
     return user.companyId;
   }
+
+
+  async refreshUserToken(userId: string): Promise<string> {
+    // Step 1: Fetch updated user data
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Step 2: Define the new JWT payload
+    const payload = {
+      sub: user.id,
+      mobile: user.phoneNumber,
+      role: user.role,
+      companyId: user.companyId,
+    };
+
+    // Step 3: Generate a new JWT
+    return this.jwtService.sign(payload);
+  }
+
+
 }

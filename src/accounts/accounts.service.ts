@@ -9,7 +9,7 @@ export class AccountsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly generalLedgerService: GeneralLedgerService,
-  ) {}
+  ) { }
 
   async getAccountStatement(
     accountId: string,
@@ -95,11 +95,11 @@ export class AccountsService {
     };
   }
 
-  async getCriticalAccounts(codes: string | string[] = []) {
+  async getCriticalAccounts(companyId: string, codes: string | string[] = []) {
     const codeArray = Array.isArray(codes) ? codes : [codes];
 
     const accounts = await Promise.all(
-      codeArray.map((code) => this.findAccountByHierarchyCode(code)),
+      codeArray.map((code) => this.findAccountByHierarchyCode(code, companyId)),
     );
 
     if (Array.isArray(codes)) {
@@ -112,12 +112,19 @@ export class AccountsService {
   }
 
   async getAccountsUnderCode(hierarchyCode: string, companyId: string) {
-    const mainAccount = await this.findAccountByHierarchyCode(hierarchyCode);
+    const mainAccount = await this.findAccountByHierarchyCode(hierarchyCode, companyId);
+
+    if (!mainAccount) {
+      throw new Error(
+        `Main account with hierarchy code ${hierarchyCode} not found for company ID ${companyId}`,
+      );
+    }
 
     return this.prisma.account.findMany({
       where: { parentAccountId: mainAccount.id },
     });
   }
+
 
   async getMainAccount() {
     return await this.prisma.account.findMany({
@@ -127,19 +134,19 @@ export class AccountsService {
     });
   }
 
-  async findAccountByHierarchyCode(hierarchyCode: string) {
-    const account = await this.prisma.account.findUnique({
-      where: { hierarchyCode },
+  async findAccountByHierarchyCode(hierarchyCode: string, companyId: string) {
+    const account = await this.prisma.account.findFirst({
+      where: { hierarchyCode: hierarchyCode, companyId: companyId },
     });
 
     if (!account) {
-      throw new Error(`Account with hierarchy code ${hierarchyCode} not found`);
+      throw new Error(`Account with hierarchy code ${hierarchyCode} and companyId: ${companyId} not found`);
     }
 
     return account;
   }
 
-  async createAccount(data: {
+  async createAccount(companyId: string, data: {
     name: string;
     accountType: $Enums.AccountType;
     openingBalance?: number;
@@ -159,7 +166,10 @@ export class AccountsService {
     if (mainAccount) {
       // Fetch the maximum hierarchyCode for main accounts
       const maxMainAccount = await this.prisma.account.findFirst({
-        where: { mainAccount: true },
+        where: {
+          companyId: companyId,
+          mainAccount: true
+        },
         orderBy: { hierarchyCode: 'desc' },
       });
 
@@ -179,14 +189,14 @@ export class AccountsService {
 
       // Generate the next sub-hierarchy code
       const maxSubAccount = await this.prisma.account.findFirst({
-        where: { parentAccountId },
+        where: { companyId: companyId, parentAccountId },
         orderBy: { hierarchyCode: 'desc' },
       });
 
       hierarchyCode = maxSubAccount
         ? (
-            parseInt(maxSubAccount.hierarchyCode.split('.').pop() || '0') + 1
-          ).toString()
+          parseInt(maxSubAccount.hierarchyCode.split('.').pop() || '0') + 1
+        ).toString()
         : '1';
 
       hierarchyCode = `${parentAccount.hierarchyCode}.${hierarchyCode}`;
@@ -200,6 +210,7 @@ export class AccountsService {
       currentBalance: openingBalance,
       mainAccount,
       hierarchyCode,
+      companyId: companyId
     };
 
     if (!mainAccount) {
@@ -207,6 +218,7 @@ export class AccountsService {
     }
 
     const newAccount = await this.prisma.account.create({
+
       data: accountData,
     });
 

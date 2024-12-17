@@ -8,34 +8,62 @@ export class GeneralLedgerService {
 
 
 
-    @Cron('0 * * * *')
-    async handleCron() {
-        console.log('Running scheduled ledger update...');
-        await this.updateGeneralLedger();
-    }
-    async updateGeneralLedger(): Promise<void> {
+
+
+    async updateGeneralLedger(companyId: string): Promise<void> {
+        // Step 1: Fetch all accounts and their children (single query)
         const accounts = await this.prisma.account.findMany({
-            include: { children: true }, // Fetch child accounts
-            orderBy: { hierarchyCode: 'desc' }, // Start with the deepest level first
+            where: { companyId },
+            select: { id: true, parentAccountId: true, openingBalance: true },
+            orderBy: { hierarchyCode: 'desc' }, // Start from the deepest accounts
         });
 
-        // Map to store account balances
+        // Step 2: Fetch all transactions for these accounts (batch query)
+        const accountIds = accounts.map((account) => account.id);
+        const transactions = await this.prisma.transaction.findMany({
+            where: { accountId: { in: accountIds } },
+            select: { accountId: true, debit: true, credit: true },
+        });
+
+        // Step 3: Calculate balances
         const accountBalances = new Map<string, number>();
 
+        // Initialize account balances with transactions
         for (const account of accounts) {
-            const balance = await this.calculateAccountBalance(account, accountBalances);
+            const accountTransactions = transactions.filter((t) => t.accountId === account.id);
+            const openingBalance = account.openingBalance || 0;
+            const transactionBalance = accountTransactions.reduce(
+                (sum, t) => sum + (t.debit || 0) - (t.credit || 0),
+                openingBalance,
+            );
 
-            // Update the balance map
-            accountBalances.set(account.id, balance);
-
-            // Update the account in the database
-            await this.prisma.account.update({
-                where: { id: account.id },
-                data: { currentBalance: balance },
-            });
+            accountBalances.set(account.id, transactionBalance);
         }
-        console.log('General ledger updated successfully')
+
+        // Aggregate child balances
+        for (const account of accounts) {
+            if (account.parentAccountId) {
+                const childBalance = accountBalances.get(account.id) || 0;
+                accountBalances.set(
+                    account.parentAccountId,
+                    (accountBalances.get(account.parentAccountId) || 0) + childBalance,
+                );
+            }
+        }
+
+        // Step 4: Update all account balances in bulk
+        const updatePromises = Array.from(accountBalances.entries()).map(([accountId, balance]) =>
+            this.prisma.account.update({
+                where: { id: accountId },
+                data: { currentBalance: balance },
+            }),
+        );
+
+        await Promise.all(updatePromises);
+
+        console.log('General ledger updated successfully');
     }
+
 
     private async calculateAccountBalance(account: any, accountBalances: Map<string, number>): Promise<number> {
         // Check if the balance is already calculated

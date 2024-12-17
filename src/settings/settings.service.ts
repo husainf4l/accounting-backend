@@ -49,4 +49,37 @@ export class SettingsService {
 
     return updatedCompany;
   }
+
+
+  async getAllCompanies(userId: string) {
+    return await this.prisma.company.findMany({
+      where: {
+        users: {
+          some: {
+            id: userId,
+          },
+        },
+      },
+
+    });
+  }
+
+
+  // Update companyId for an account
+  async updateAccountCompany(userId: string, companyId: string) {
+    // Check if company exists
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+    });
+    if (!company) {
+      throw new NotFoundException('Company not found');
+    }
+
+    // Update account with companyId
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: { companyId: companyId },
+    });
+  }
+
 }

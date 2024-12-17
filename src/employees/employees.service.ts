@@ -8,8 +8,10 @@ export class EmployeesService {
 
   async createEmployee(data: { name: string }, companyId: string): Promise<any> {
     console.log('Starting createEmployee function');
-    const employeesLiability = await this.prisma.account.findUnique({
+    const employeesLiability = await this.prisma.account.findFirst({
       where: {
+        companyId: companyId,
+
         hierarchyCode: '2.1.1',
       },
       select: { id: true },
@@ -23,6 +25,7 @@ export class EmployeesService {
     const hierarchyCode = await generateHierarchyCode(
       this.prisma,
       employeesLiability.id,
+      companyId
     );
     console.log('Generated hierarchy code:', hierarchyCode);
 
@@ -47,6 +50,7 @@ export class EmployeesService {
         data: {
           // accountId: newAccount.id,
           // displayName: data.name || null,
+          companyId: companyId
         },
       });
       console.log('Employee Details:', employeeDetails);

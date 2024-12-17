@@ -30,6 +30,7 @@ export class InvoiceService {
   }
 
   async getInvoiceData(companyId: string) {
+
     const [clients, accountManagers, products, number, cashAccounts] =
       await Promise.all([
         this.clientsService.getClients(companyId),
@@ -51,7 +52,7 @@ export class InvoiceService {
       data.clientName,
     );
 
-    const criticalAccounts = await this.accountsService.getCriticalAccounts([
+    const criticalAccounts = await this.accountsService.getCriticalAccounts(companyId, [
       '4.1',
       '2.1.2',
       '5.5',
@@ -100,6 +101,11 @@ export class InvoiceService {
           },
         },
         taxExclusiveAmount: data.taxExclusiveAmount || 0.0,
+        company: {
+          connect: {
+            id: companyId, // Fixing relation for companyId
+          },
+        },
         taxInclusiveAmount: data.taxInclusiveAmount || 0.0,
         allowanceTotalAmount: data.allowanceTotalAmount || null,
         payableAmount: data.payableAmount || 0.0,
@@ -109,12 +115,13 @@ export class InvoiceService {
             Product: item.productId
               ? { connect: { id: item.productId } }
               : undefined, // Use connect for related Product
-            name: item.name || 'Default Item Name', // Ensure name is provided
+            name: item.name || 'Default Item Name',
+            companyId: companyId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             discountAmount: item.discount || 0.0,
             lineExtensionAmount:
-              item.quantity * item.unitPrice - (item.discount || 0.0), // Use lineExtensionAmount
+              item.quantity * item.unitPrice - (item.discount || 0.0),
             taxAmount: item.taxAmount,
             taxCategory: item.taxCategory || 'S',
             taxPercent: item.taxPercent || 16.0,
@@ -127,9 +134,10 @@ export class InvoiceService {
       },
     });
 
+
     console.log(invoice);
 
-    this.xmlReceiverService.sendInvoiceTojofotara(invoice);
+    // this.xmlReceiverService.sendInvoiceTojofotara(invoice);
 
     return invoice;
   }
@@ -151,9 +159,10 @@ export class InvoiceService {
     return invoice;
   }
 
-  async getInvoicesDetails() {
+  async getInvoicesDetails(companyId: string) {
     // Fetch all invoices
     const invoices = await this.prisma.invoice.findMany({
+      where: { companyId: companyId },
       include: {
         customer: true,
         employee: true,

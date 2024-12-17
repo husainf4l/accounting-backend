@@ -1,6 +1,6 @@
 model Account {
   id              String         @id @default(uuid())
-  hierarchyCode   String         @unique
+  hierarchyCode   String
   name            String
   companyId       String
   accountType     AccountType
@@ -15,6 +15,10 @@ model Account {
   GeneralLedger   GeneralLedger?
   leases          Lease[]
   transactions    Transaction[]
+
+  @@unique([hierarchyCode, companyId])
+  @@index([companyId])
+  @@index([companyId, hierarchyCode])
 }
 
 model BankDetails {
@@ -43,6 +47,9 @@ model Transaction {
   createdAt      DateTime     @default(now())
   account        Account      @relation(fields: [accountId], references: [id])
   journalEntry   JournalEntry @relation("JournalEntryTransactions", fields: [journalEntryId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, createdAt])
 }
 
 model JournalEntry {
@@ -52,12 +59,13 @@ model JournalEntry {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[] @relation("JournalEntryTransactions")
+
+  @@index([companyId])
 }
 
 model Customer {
   id             String     @id @default(cuid())
   identification String     @default("Unknown")
-  schemeId       String     @default("Unknown")
   name           String
   companyId      String
   postalCode     String?
@@ -71,6 +79,8 @@ model Customer {
   contracts      Contract[]
   invoices       Invoice[]
   receipts       Receipt[]
+
+  @@index([companyId])
 }
 
 model Receipt {
@@ -92,6 +102,8 @@ model Receipt {
   accountManager       Employee?   @relation(fields: [accountManagerId], references: [id])
   customer             Customer    @relation(fields: [customerId], references: [id])
   User                 User?       @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
 }
 
 model Cheque {
@@ -105,6 +117,8 @@ model Cheque {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   receipt      Receipt  @relation(fields: [receiptId], references: [id])
+
+  @@index([companyId])
 }
 
 model Contract {
@@ -171,6 +185,9 @@ model GeneralLedger {
   companyId String
   updatedAt DateTime @updatedAt
   account   Account  @relation(fields: [accountId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, accountId])
 }
 
 model Product {
@@ -200,6 +217,8 @@ model Product {
   updatedAt      DateTime         @updatedAt
   invoices       InvoiceItem[]
   warehouses     WarehouseStock[]
+
+  @@index([companyId])
 }
 
 model Warehouse {

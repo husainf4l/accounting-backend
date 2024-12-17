@@ -15,6 +15,7 @@ export class ReceiptController {
     return this.receiptService.getReceiptData(companyId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   async createReceipt(@Req() req: any, @Body() createReceiptDto: CreateReceiptDto) {
     const companyId = req.user.companyId;
@@ -22,8 +23,11 @@ export class ReceiptController {
     return this.receiptService.createReceipt(createReceiptDto, companyId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('receipt-list')
-  async getReceiptList() {
-    return this.receiptService.getReceiptList();
+  async getReceiptList(@Req() req: any,) {
+    const companyId = req.user.companyId;
+
+    return this.receiptService.getReceiptList(companyId);
   }
 }

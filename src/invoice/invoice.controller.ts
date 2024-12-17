@@ -18,11 +18,14 @@ export class InvoiceController {
         return this.invoiceService.getInvoiceData(companyId);
     }
 
+    @UseGuards(AuthGuard('jwt'))
     @Get('invoice-details/:invoiceId')
     async getInvoiceDetails(@Param('invoiceId') invoiceId: string) {
         return this.invoiceService.getInvoiceDetails(invoiceId);
     }
 
+
+    @UseGuards(AuthGuard('jwt'))
     @Post('create')
     async createInvoice(@Req() req: any, @Body() createInvoiceDto: any) {
         const companyId = req.user.companyId;
@@ -30,12 +33,20 @@ export class InvoiceController {
         return this.invoiceService.createInvoice(createInvoiceDto, companyId);
     }
 
+
+
+    @UseGuards(AuthGuard('jwt'))
     @Get('invoices-data')
-    async getInvoicesDetails() {
-        return this.invoiceService.getInvoicesDetails();
+    async getInvoicesDetails(@Req() req: any,) {
+        const companyId = req.user.companyId;
+        return this.invoiceService.getInvoicesDetails(companyId);
     }
 
 
+
+
+
+    @UseGuards(AuthGuard('jwt'))
     @Post('submitEinvoice')
     async sendInvoice(@Body() invoice: any): Promise<any> {
         try {

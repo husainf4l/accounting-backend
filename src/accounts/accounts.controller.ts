@@ -13,7 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('accounts')
 export class AccountsController {
-  constructor(private readonly accountsService: AccountsService) {}
+  constructor(private readonly accountsService: AccountsService) { }
 
   @UseGuards(AuthGuard('jwt'))
   @Get(':accountId/statement')
@@ -41,7 +41,7 @@ export class AccountsController {
   async createAccount(@Body() accountData: any, @Req() req: any) {
     const companyId = req.user.companyId;
 
-    return this.accountsService.createAccount(accountData);
+    return this.accountsService.createAccount(companyId, accountData);
   }
 
   @Get('main')

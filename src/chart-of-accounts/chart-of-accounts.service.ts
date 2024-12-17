@@ -11,12 +11,17 @@ export class ChartOfAccountsService {
   ) { }
 
   // Get all accounts
-  async getAllAccounts(companyId: string): Promise<Account[]> {
-    await this.generalLedger.updateGeneralLedger();
+  async getAllAccounts(companyId: string): Promise<any[]> {
+    await this.generalLedger.updateGeneralLedger(companyId);
     return this.prisma.account.findMany({
-      include: {
-        parentAccount: true,
-        children: true,
+      where: { companyId: companyId },
+      select: {
+        id: true,
+        name: true,
+        accountType: true,
+        hierarchyCode: true,
+        currentBalance: true,
+        mainAccount: true
       },
       orderBy: [
         {
@@ -32,7 +37,10 @@ export class ChartOfAccountsService {
   // Get a single account by ID
   async getAccountById(id: string, companyId: string): Promise<Account | null> {
     return this.prisma.account.findUnique({
-      where: { id },
+      where: {
+        companyId: companyId,
+        id: id
+      },
       include: {
         parentAccount: true,
         children: true,
@@ -56,7 +64,7 @@ export class ChartOfAccountsService {
     companyId: string,
   ): Promise<Account> {
     return this.prisma.account.update({
-      where: { id },
+      where: { companyId: companyId, id: id },
       data,
     });
   }
@@ -64,12 +72,14 @@ export class ChartOfAccountsService {
   // Delete an account
   async deleteAccount(id: string, companyId: string): Promise<Account> {
     return this.prisma.account.delete({
-      where: { id },
+      where: { companyId: companyId, id: id },
     });
   }
 
   async initializeChartOfAccounts(companyId: string): Promise<string> {
-    const existingAccounts = await this.prisma.account.findMany();
+    const existingAccounts = await this.prisma.account.findMany(
+      { where: { companyId: companyId } }
+    );
     if (existingAccounts.length > 0) {
       console.log('Chart of Accounts already initialized.');
       return 'Chart of Accounts already initialized.';
@@ -82,13 +92,7 @@ export class ChartOfAccountsService {
         accountType: AccountType.ASSET,
         mainAccount: true,
         parentHierarchyCode: null,
-      },
-      {
-        hierarchyCode: '1.2',
-        name: 'Fixed Assets',
-        accountType: AccountType.ASSET,
-        mainAccount: true,
-        parentHierarchyCode: '1',
+        companyId: companyId,
       },
       {
         hierarchyCode: '1.1',
@@ -96,111 +100,7 @@ export class ChartOfAccountsService {
         accountType: AccountType.ASSET,
         mainAccount: true,
         parentHierarchyCode: '1',
-      },
-      {
-        hierarchyCode: '1.1.5',
-        name: 'long term Cheques',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1',
-      },
-      {
-        hierarchyCode: '1.1.4',
-        name: 'Stock',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1',
-      },
-      {
-        hierarchyCode: '1.1.3',
-        name: 'Accounts Receivable',
-        accountType: AccountType.ASSET,
-        mainAccount: true,
-        parentHierarchyCode: '1.1',
-      },
-      {
-        hierarchyCode: '1.1.3.9',
-        name: 'maria fatol',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.12',
-        name: 'Majd Chuck',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.11',
-        name: 'zxsd',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.10',
-        name: 'sdsadsa',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.1',
-        name: 'Client A',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.8',
-        name: 'al-hussein qasem-abdullah',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.7',
-        name: 'Maria Fatol',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.6',
-        name: 'ssss',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.5',
-        name: 'Maria Fatol',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.4',
-        name: 'alhussein',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.3',
-        name: 'cashmer',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
-      },
-      {
-        hierarchyCode: '1.1.3.2',
-        name: 'Client B',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.3',
+        companyId: companyId,
       },
       {
         hierarchyCode: '1.1.1',
@@ -208,13 +108,7 @@ export class ChartOfAccountsService {
         accountType: AccountType.ASSET,
         mainAccount: true,
         parentHierarchyCode: '1.1',
-      },
-      {
-        hierarchyCode: '1.1.1.2',
-        name: 'Office Cash',
-        accountType: AccountType.ASSET,
-        mainAccount: false,
-        parentHierarchyCode: '1.1.1',
+        companyId: companyId,
       },
       {
         hierarchyCode: '1.1.1.1',
@@ -222,6 +116,47 @@ export class ChartOfAccountsService {
         accountType: AccountType.ASSET,
         mainAccount: false,
         parentHierarchyCode: '1.1.1',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '1.1.1.2',
+        name: 'Office Cash',
+        accountType: AccountType.ASSET,
+        mainAccount: false,
+        parentHierarchyCode: '1.1.1',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '1.1.3',
+        name: 'Accounts Receivable',
+        accountType: AccountType.ASSET,
+        mainAccount: true,
+        parentHierarchyCode: '1.1',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '1.1.4',
+        name: 'Stock',
+        accountType: AccountType.ASSET,
+        mainAccount: false,
+        parentHierarchyCode: '1.1',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '1.1.5',
+        name: 'Long-Term Cheques',
+        accountType: AccountType.ASSET,
+        mainAccount: false,
+        parentHierarchyCode: '1.1',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '1.2',
+        name: 'Fixed Assets',
+        accountType: AccountType.ASSET,
+        mainAccount: true,
+        parentHierarchyCode: '1',
+        companyId: companyId,
       },
       {
         hierarchyCode: '2',
@@ -229,6 +164,7 @@ export class ChartOfAccountsService {
         accountType: AccountType.LIABILITY,
         mainAccount: true,
         parentHierarchyCode: null,
+        companyId: companyId,
       },
       {
         hierarchyCode: '2.1.1.2',
@@ -236,6 +172,7 @@ export class ChartOfAccountsService {
         accountType: AccountType.LIABILITY,
         mainAccount: false,
         parentHierarchyCode: '2.1.1',
+        companyId: companyId,
       },
       {
         hierarchyCode: '2.2',
@@ -243,6 +180,23 @@ export class ChartOfAccountsService {
         accountType: AccountType.LIABILITY,
         mainAccount: true,
         parentHierarchyCode: '2',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '2.3',
+        name: 'Income Tax Payable',
+        accountType: AccountType.LIABILITY,
+        mainAccount: true,
+        parentHierarchyCode: '2',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '2.1.2',
+        name: 'Sales Tax Payable',
+        accountType: AccountType.LIABILITY,
+        mainAccount: true,
+        parentHierarchyCode: '2',
+        companyId: companyId,
       },
       {
         hierarchyCode: '3',
@@ -250,6 +204,31 @@ export class ChartOfAccountsService {
         accountType: AccountType.EQUITY,
         mainAccount: true,
         parentHierarchyCode: null,
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '3.1',
+        name: 'Retained Earnings',
+        accountType: AccountType.EQUITY,
+        mainAccount: true,
+        parentHierarchyCode: '3',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '3.2',
+        name: 'Share Capital',
+        accountType: AccountType.EQUITY,
+        mainAccount: true,
+        parentHierarchyCode: '3',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '3.3',
+        name: 'Reserves',
+        accountType: AccountType.EQUITY,
+        mainAccount: true,
+        parentHierarchyCode: '3',
+        companyId: companyId,
       },
       {
         hierarchyCode: '4',
@@ -257,6 +236,7 @@ export class ChartOfAccountsService {
         accountType: AccountType.REVENUE,
         mainAccount: true,
         parentHierarchyCode: null,
+        companyId: companyId,
       },
       {
         hierarchyCode: '5',
@@ -264,6 +244,31 @@ export class ChartOfAccountsService {
         accountType: AccountType.EXPENSE,
         mainAccount: true,
         parentHierarchyCode: null,
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '5.1',
+        name: 'Purchases',
+        accountType: AccountType.EXPENSE,
+        mainAccount: false,
+        parentHierarchyCode: '5',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '5.5',
+        name: 'Cost of Goods Sold (COGS)',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '5',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '5.3',
+        name: 'Initial Stock',
+        accountType: AccountType.EXPENSE,
+        mainAccount: false,
+        parentHierarchyCode: '5',
+        companyId: companyId,
       },
       {
         hierarchyCode: '6',
@@ -271,8 +276,82 @@ export class ChartOfAccountsService {
         accountType: AccountType.EXPENSE,
         mainAccount: true,
         parentHierarchyCode: null,
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.1',
+        name: 'Administrative Expenses',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.2',
+        name: 'Marketing Expenses',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.3',
+        name: 'Depreciation',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.4',
+        name: 'Amortization',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.5',
+        name: 'Insurance Expenses',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.6',
+        name: 'Travel Expenses',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.7',
+        name: 'Utilities',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.8',
+        name: 'Repairs and Maintenance',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
+      },
+      {
+        hierarchyCode: '6.9',
+        name: 'Bad Debts',
+        accountType: AccountType.EXPENSE,
+        mainAccount: true,
+        parentHierarchyCode: '6',
+        companyId: companyId,
       },
     ];
+
 
     // Step 2: Create all accounts
     for (const account of accounts) {
@@ -289,8 +368,11 @@ export class ChartOfAccountsService {
           mainAccount: account.mainAccount,
           parentAccountId: parentAccount
             ? (
-              await this.prisma.account.findUnique({
-                where: { hierarchyCode: parentAccount.hierarchyCode },
+              await this.prisma.account.findFirst({
+                where: {
+                  companyId: companyId,
+                  hierarchyCode: parentAccount.hierarchyCode
+                },
               })
             )?.id
             : null,

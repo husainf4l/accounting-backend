@@ -12,22 +12,30 @@ import {
 import { ChartOfAccountsService } from './chart-of-accounts.service';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @Controller('chart-of-accounts')
 export class ChartOfAccountsController {
   constructor(
     private readonly chartOfAccountsService: ChartOfAccountsService,
-  ) {}
+  ) { }
+
+
+
 
   @UseGuards(AuthGuard('jwt'))
   @Get()
   async getAllAccounts(@Req() req: any) {
     const companyId = req.user.companyId;
+    console.log(companyId)
 
     return this.chartOfAccountsService.getAllAccounts(companyId);
   }
 
-  // Get an account by ID
+
+
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getAccountById(@Req() req: any, @Param('id') id: string) {
     const companyId = req.user.companyId;
@@ -35,7 +43,7 @@ export class ChartOfAccountsController {
     return this.chartOfAccountsService.getAccountById(id, companyId);
   }
 
-  // Create a new account
+  @UseGuards(JwtAuthGuard)
   @Post()
   async createAccount(
     @Req() req: any,
@@ -46,7 +54,7 @@ export class ChartOfAccountsController {
     return this.chartOfAccountsService.createAccount2(accountData, companyId);
   }
 
-  // Update an account
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   async updateAccount(
     @Req() req: any,
@@ -62,7 +70,7 @@ export class ChartOfAccountsController {
     );
   }
 
-  // Delete an account
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async deleteAccount(@Req() req: any, @Param('id') id: string) {
     const companyId = req.user.companyId;
@@ -70,6 +78,7 @@ export class ChartOfAccountsController {
     return this.chartOfAccountsService.deleteAccount(id, companyId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('initialize')
   async initialize(@Req() req: any) {
     const companyId = req.user.companyId;

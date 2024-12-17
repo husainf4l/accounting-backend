@@ -15,8 +15,11 @@ export class ClientsService {
     console.log('Starting createClient function');
 
     // Fetch Accounts Receivable account
-    const accountsReceivable = await this.prisma.account.findUnique({
-      where: { hierarchyCode: '1.1.3' },
+    const accountsReceivable = await this.prisma.account.findFirst({
+      where: {
+        companyId,
+        hierarchyCode: '1.1.3'
+      },
       select: { id: true },
     });
     console.log('Accounts Receivable:', accountsReceivable);
@@ -31,6 +34,7 @@ export class ClientsService {
     const hierarchyCode = await generateHierarchyCode(
       this.prisma,
       accountsReceivable.id,
+      companyId
     );
     console.log('Generated hierarchy code:', hierarchyCode);
 
@@ -75,8 +79,11 @@ export class ClientsService {
 
 
   async getClients(companyId: string) {
-    const accountsReceivable = await this.prisma.account.findUnique({
-      where: { hierarchyCode: '1.1.3' },
+    const accountsReceivable = await this.prisma.account.findFirst({
+      where: {
+        companyId,
+        hierarchyCode: '1.1.3'
+      },
     });
 
     if (!accountsReceivable) {
@@ -85,6 +92,7 @@ export class ClientsService {
 
     return this.prisma.account.findMany({
       where: {
+        companyId: companyId,
         parentAccountId: accountsReceivable.id,
       },
       select: {
@@ -92,6 +100,7 @@ export class ClientsService {
         name: true,
         currentBalance: true,
         hierarchyCode: true,
+        companyId: true,
       },
     });
   }
