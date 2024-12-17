@@ -9,6 +9,7 @@ model User {
   profileImage String    @default("default_image_url")
   role         UserRole  @default(USER)
   companyId    String? // Active company ID
+  tenantId     Int?
   position     String?
   department   String?
   hireDate     DateTime?
@@ -16,33 +17,57 @@ model User {
   isActive     Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  tenantId     Int?
-  invoices     Invoice[]
-  receipts     Receipt[]
-  company      Company?  @relation(fields: [companyId], references: [id])
-  companies    Company[] @relation("UserCompanies")
+
+  // Relationships
+  company   Company?      @relation("ActiveCompany", fields: [companyId], references: [id])
+  companies UserCompany[] @relation("UserCompanies") // Many-to-many relation via UserCompany
+  invoices  Invoice[]
+  receipts  Receipt[]
 }
 
 model Company {
-  id                String    @id @default(uuid())
+  id                String   @id @default(uuid())
   name              String
   address           String?
   whatsAppKey       String?
   phone             String?
-  email             String    @unique
+  email             String   @unique
   website           String?
-  taxNumber         String?   @unique
+  taxNumber         String?  @unique
   logoImage         String
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  legalName         String?
   eInvoiceClientId  String?
   eInvoiceSecretKey String?
-  legalName         String?
   eInvoiceLink      String?
-  legalId           String?   @unique
-  invoices          Invoice[]
-  users             User[]    @relation("UserCompanies") // Automatically inferred
-  User              User[]
+  legalId           String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relationships
+  users       UserCompany[] @relation("UserCompanies") // Many-to-many relation via UserCompany
+  activeUsers User[]        @relation("ActiveCompany")
+  invoices    Invoice[]
+}
+
+model UserCompany {
+  id         String   @id @default(uuid())
+  userId     String
+  companyId  String
+  position   String? // User's position in the company
+  department String? // User's department in the company
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation("UserCompanies", fields: [userId], references: [id])
+  company    Company  @relation("UserCompanies", fields: [companyId], references: [id])
+
+  @@unique([userId, companyId]) // Ensures no duplicate user-company relationships
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
 }
 
 model Employee {
@@ -59,10 +84,4 @@ model Employee {
   companyId  String
   invoices   Invoice[]
   receipts   Receipt[]
-}
-
-enum UserRole {
-  USER
-  ADMIN
-  SUPERADMIN
 }

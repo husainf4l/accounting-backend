@@ -18,11 +18,9 @@ export class SettingsService {
     private authService: AuthService,
     @Inject('FIREBASE_APP_OVOVEX')
     private readonly firebaseAppOvovex: admin.app.App,
-  ) { }
+  ) {}
 
-  async getCompanySettings(token: string): Promise<any> {
-    const companyId = this.authService.getCompanyId(token);
-
+  async getCompanySettings(companyId: string): Promise<any> {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
     });
@@ -34,13 +32,8 @@ export class SettingsService {
     return company;
   }
 
-  async updateCompanyData(updates: any, token: string): Promise<any> {
+  async updateCompanyData(updates: any, companyId: string): Promise<any> {
     // Extract the company ID from the token
-    const companyId = this.authService.getCompanyId(token);
-
-    if (!companyId) {
-      throw new NotFoundException('Invalid or missing token.');
-    }
 
     const updatedCompany = await this.prisma.company.update({
       where: { id: companyId },
@@ -50,20 +43,17 @@ export class SettingsService {
     return updatedCompany;
   }
 
-
   async getAllCompanies(userId: string) {
-    return await this.prisma.company.findMany({
+    return await this.prisma.userCompany.findMany({
       where: {
-        users: {
-          some: {
-            id: userId,
-          },
-        },
+        userId: userId,
       },
-
+      include: {
+        company: true,
+        user: true,
+      },
     });
   }
-
 
   // Update companyId for an account
   async updateAccountCompany(userId: string, companyId: string) {
@@ -81,5 +71,4 @@ export class SettingsService {
       data: { companyId: companyId },
     });
   }
-
 }

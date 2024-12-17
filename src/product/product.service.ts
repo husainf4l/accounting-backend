@@ -9,7 +9,7 @@ export class ProductService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async uploadProducts(filePath: string): Promise<any> {
+  async uploadProducts(filePath: string, companyId: string): Promise<any> {
     console.log('Started processing file:', filePath);
 
     // Mapping columns to database fields
@@ -37,6 +37,7 @@ export class ProductService {
       costPrice: row.costPrice
         ? parseFloat(Number(row.costPrice).toFixed(3))
         : null,
+      companyId: companyId,
       salesPrice: row.salesPrice
         ? parseFloat(Number(row.salesPrice).toFixed(3))
         : null,
@@ -62,6 +63,7 @@ export class ProductService {
 
   async getProducts(companyId: string) {
     const products = await this.prisma.product.findMany({
+      where: { companyId: companyId },
       orderBy: { name: 'asc' },
     });
 

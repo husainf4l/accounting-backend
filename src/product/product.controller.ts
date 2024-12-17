@@ -1,16 +1,21 @@
-import { Controller, Post, Req, Inject, Get } from '@nestjs/common';
+import { Controller, Post, Req, Inject, Get, UseGuards } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ProductService } from './product.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('product')
 export class ProductController {
   constructor(private readonly productsService: ProductService) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('upload')
-  async uploadProducts(@Req() request: FastifyRequest): Promise<any> {
-    // Parse the file from the request
+  async uploadProducts(@Req() request: FastifyRequest, req:any): Promise<any> {
+
+    const companyId = req.user.companyId;
+
+
     const file = await request.file();
 
     if (!file) {
@@ -40,10 +45,11 @@ export class ProductController {
     console.log('File Path:', filePath);
 
     // Call the service to process the file
-    const result = await this.productsService.uploadProducts(filePath);
+    const result = await this.productsService.uploadProducts(filePath, companyId);
     return result;
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('all-products')
   async allProducts(@Req() req: any) {
     const companyId = req.user.companyId;
