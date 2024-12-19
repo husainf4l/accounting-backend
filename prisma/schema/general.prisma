@@ -191,34 +191,43 @@ model GeneralLedger {
 }
 
 model Product {
-  id             String           @id @default(uuid())
-  barcode        String?          @unique
-  name           String
-  companyId      String
-  description    String?
-  costPrice      Float            @default(0.0)
-  salesPrice     Float            @default(0.0)
-  wholesalePrice Float            @default(0.0)
-  avgPrice       Float?           @default(0.0)
-  stock          Int              @default(0)
-  reorderLevel   Int?
-  isActive       Boolean          @default(true)
-  origin         String?
-  family         String?
-  subFamily      String?
-  taxRate        Float            @default(0.16)
-  discountRate   Float            @default(0.0)
-  profitMargin   Float?
-  location       String?
-  packaging      String?
-  itemType       String?
-  imageUrl       String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  invoices       InvoiceItem[]
-  warehouses     WarehouseStock[]
+  id                String              @id @default(uuid())
+  barcode           String?             @unique
+  name              String
+  companyId         String
+  description       String?
+  costPrice         Float               @default(0.0)
+  salesPrice        Float               @default(0.0)
+  wholesalePrice    Float               @default(0.0)
+  avgPrice          Float?              @default(0.0)
+  stock             Int                 @default(0)
+  reorderLevel      Int?
+  isActive          Boolean             @default(true)
+  origin            String?
+  family            String?
+  subFamily         String?
+  taxRate           Float               @default(0.16)
+  discountRate      Float               @default(0.0)
+  profitMargin      Float?
+  location          String?
+  packaging         String?
+  category          String? 
+  nrv               Float? 
+  itemType          String?
+  imageUrl          String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  invoices          InvoiceItem[]
+  warehouses        WarehouseStock[]
+  InventoryMovement InventoryMovement[]
+  valuationMethod   ValuationMethod     @default(FIFO)
 
   @@index([companyId])
+}
+
+enum ValuationMethod {
+  FIFO
+  WAC
 }
 
 model Warehouse {
@@ -229,6 +238,7 @@ model Warehouse {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   stock     WarehouseStock[]
+  // InventoryMovement InventoryMovement[]
 }
 
 model WarehouseStock {
@@ -262,4 +272,25 @@ enum PaymentMode {
   CASH
   ACCOUNTS_RECEIVABLE
   CHEQUE
+}
+
+model InventoryMovement {
+  id          String       @id @default(uuid())
+  productId   String
+  warehouseId String?
+  companyId   String
+  type        MovementType // IN or OUT
+  quantity    Int
+  costPerUnit Float
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  product     Product      @relation(fields: [productId], references: [id])
+  // warehouse   Warehouse    @relation(fields: [warehouseId], references: [id])
+
+  @@index([companyId, productId])
+}
+
+enum MovementType {
+  IN
+  OUT
 }

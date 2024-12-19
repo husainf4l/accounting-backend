@@ -1,4 +1,12 @@
-import { Controller, Post, Req, Inject, Get, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Req,
+  Inject,
+  Get,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -11,10 +19,8 @@ export class ProductController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('upload')
-  async uploadProducts(@Req() request: FastifyRequest, req:any): Promise<any> {
-
+  async uploadProducts(@Req() request: FastifyRequest, req: any): Promise<any> {
     const companyId = req.user.companyId;
-
 
     const file = await request.file();
 
@@ -45,7 +51,10 @@ export class ProductController {
     console.log('File Path:', filePath);
 
     // Call the service to process the file
-    const result = await this.productsService.uploadProducts(filePath, companyId);
+    const result = await this.productsService.uploadProducts(
+      filePath,
+      companyId,
+    );
     return result;
   }
 
@@ -54,5 +63,41 @@ export class ProductController {
   async allProducts(@Req() req: any) {
     const companyId = req.user.companyId;
     return this.productsService.getProducts(companyId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('inventory')
+  async getInventory(
+    @Req() req: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const companyId = req.user.companyId;
+    return this.productsService.inventory(companyId, startDate, endDate);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('inventory/export')
+  async exportInventoryReport(
+    @Req() req: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const companyId = req.user.companyId;
+    const reportData = await this.productsService.generateReport(
+      companyId,
+      startDate,
+      endDate,
+    );
+
+    // Placeholder for file generation logic
+    return reportData;
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('stock-alerts')
+  async getStockAlerts(@Req() req: any) {
+    const companyId = req.user.companyId;
+    return this.productsService.getStockAlerts(companyId);
   }
 }

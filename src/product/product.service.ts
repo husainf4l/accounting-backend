@@ -108,4 +108,88 @@ export class ProductService {
 
     return totalCOGS;
   }
+
+  async calculateCost(productId: string, quantity: number): Promise<number> {
+    const movements = await this.prisma.inventoryMovement.findMany({
+      where: { productId },
+      orderBy: { createdAt: 'asc' }, // For FIFO
+    });
+
+    let cost = 0;
+    let remaining = quantity;
+
+    for (const movement of movements) {
+      if (remaining <= 0) break;
+
+      const usedQuantity = Math.min(remaining, movement.quantity);
+      cost += usedQuantity * movement.costPerUnit;
+      remaining -= usedQuantity;
+    }
+
+    if (remaining > 0)
+      throw new Error('Insufficient stock for FIFO calculation');
+
+    return cost;
+  }
+
+  async inventory(companyId: string, startDate?: string, endDate?: string) {
+    const inventory = await this.prisma.product.findMany({
+      where: {
+        companyId,
+        createdAt: {
+          gte: startDate ? new Date(startDate) : undefined,
+          lte: endDate ? new Date(endDate) : undefined,
+        },
+      },
+    });
+  
+    // Add total cost calculation
+    const formattedInventory = inventory.map((item) => ({
+      name: item.name,
+      sku: item.barcode,
+      category: item.category,
+      stock: item.stock,
+      costPrice: item.costPrice,
+      totalCost: item.costPrice * item.stock,
+      nrv: item.nrv || null, // Include NRV if applicable
+      isBelowReorder: item.stock < (item.reorderLevel || 0), // Add stock alert flag
+      valuationMethod: item.valuationMethod || 'FIFO', // Default to FIFO
+    }));
+  
+    return formattedInventory;
+  }
+  
+  
+  async generateReport(companyId: string, startDate?: string, endDate?: string) {
+    const inventory = await this.inventory(companyId, startDate, endDate);
+  
+    // Format the inventory data for the report
+    const reportData = inventory.map((item) => ({
+      Name: item.name,
+      SKU: item.sku, // Use 'sku' as defined in the formattedInventory
+      Category: item.category,
+      Stock: item.stock,
+      Cost: item.costPrice,
+      TotalCost: (item.costPrice * item.stock).toFixed(2),
+    }));
+  
+    return reportData;
+  }
+  
+
+
+  async getStockAlerts(companyId: string) {
+    const alerts = await this.prisma.product.findMany({
+      where: {
+        companyId,
+        stock: {
+          lt: this.prisma.product.fields.reorderLevel, // Less than reorder level
+        },
+      },
+    });
+  
+    return alerts;
+  }
+  
+  
 }
