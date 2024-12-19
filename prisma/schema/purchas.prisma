@@ -1,0 +1,41 @@
+model PurchaseInvoice {
+    id                   String                @id @default(cuid())
+    uuid                 String                @unique @default(dbgenerated("gen_random_uuid()"))
+    issueDate            DateTime              @default(now())
+    note                 String?
+    documentCurrency     String                @default("JOD")
+    taxCurrency          String                @default("JOD")
+    companyId            String
+    supplierId           String // Supplier involved in the purchase
+    taxExclusiveAmount   Float                 @default(0.0)
+    taxInclusiveAmount   Float                 @default(0.0)
+    allowanceTotalAmount Float?
+    payableAmount        Float                 @default(0.0)
+    employeeId           String?
+    createdAt            DateTime              @default(now())
+    updatedAt            DateTime?             @updatedAt
+    isSubmitted          Boolean               @default(false)
+    number               Int                   @unique
+    items                PurchaseInvoiceItem[]
+
+    @@index([companyId])
+}
+
+model PurchaseInvoiceItem {
+    id                  String          @id @default(cuid())
+    purchaseInvoiceId   String
+    name                String
+    quantity            Float
+    unitPrice           Float
+    companyId           String
+    discountAmount      Float?
+    lineExtensionAmount Float
+    taxAmount           Float
+    taxCategory         String
+    taxPercent          Float
+    productId           String?
+    purchaseInvoice     PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id])
+    Product             Product?        @relation(fields: [productId], references: [id])
+
+    @@index([companyId])
+}

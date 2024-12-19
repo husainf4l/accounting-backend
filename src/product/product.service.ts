@@ -7,7 +7,7 @@ export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   async uploadProducts(filePath: string, companyId: string): Promise<any> {
     console.log('Started processing file:', filePath);
@@ -133,6 +133,7 @@ export class ProductService {
   }
 
   async inventory(companyId: string, startDate?: string, endDate?: string) {
+    // Fetch products with related movements
     const inventory = await this.prisma.product.findMany({
       where: {
         companyId,
@@ -141,28 +142,33 @@ export class ProductService {
           lte: endDate ? new Date(endDate) : undefined,
         },
       },
+      include: {
+        InventoryMovement: true, // Include related movements from inventoryMovements table
+      },
     });
-  
-    // Add total cost calculation
+
+    // Add total cost calculation and ensure all fields are present
     const formattedInventory = inventory.map((item) => ({
       name: item.name,
-      sku: item.barcode,
-      category: item.category,
-      stock: item.stock,
-      costPrice: item.costPrice,
-      totalCost: item.costPrice * item.stock,
+      sku: item.barcode || null, // Ensure null for missing values
+      category: item.category || null,
+      stock: item.stock || 0,
+      costPrice: item.costPrice || 0,
+      totalCost: (item.costPrice || 0) * (item.stock || 0),
       nrv: item.nrv || null, // Include NRV if applicable
-      isBelowReorder: item.stock < (item.reorderLevel || 0), // Add stock alert flag
-      valuationMethod: item.valuationMethod || 'FIFO', // Default to FIFO
+      isBelowReorder: item.stock < (item.reorderLevel || 0),
+      valuationMethod: item.valuationMethod || 'FIFO',
+      movements: item.InventoryMovement || [], // Ensure movements is an array
     }));
-  
+
     return formattedInventory;
   }
-  
-  
+
+
+
   async generateReport(companyId: string, startDate?: string, endDate?: string) {
     const inventory = await this.inventory(companyId, startDate, endDate);
-  
+
     // Format the inventory data for the report
     const reportData = inventory.map((item) => ({
       Name: item.name,
@@ -172,10 +178,10 @@ export class ProductService {
       Cost: item.costPrice,
       TotalCost: (item.costPrice * item.stock).toFixed(2),
     }));
-  
+
     return reportData;
   }
-  
+
 
 
   async getStockAlerts(companyId: string) {
@@ -187,9 +193,9 @@ export class ProductService {
         },
       },
     });
-  
+
     return alerts;
   }
-  
-  
+
+
 }

@@ -191,36 +191,37 @@ model GeneralLedger {
 }
 
 model Product {
-  id                String              @id @default(uuid())
-  barcode           String?             @unique
-  name              String
-  companyId         String
-  description       String?
-  costPrice         Float               @default(0.0)
-  salesPrice        Float               @default(0.0)
-  wholesalePrice    Float               @default(0.0)
-  avgPrice          Float?              @default(0.0)
-  stock             Int                 @default(0)
-  reorderLevel      Int?
-  isActive          Boolean             @default(true)
-  origin            String?
-  family            String?
-  subFamily         String?
-  taxRate           Float               @default(0.16)
-  discountRate      Float               @default(0.0)
-  profitMargin      Float?
-  location          String?
-  packaging         String?
-  category          String? 
-  nrv               Float? 
-  itemType          String?
-  imageUrl          String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  invoices          InvoiceItem[]
-  warehouses        WarehouseStock[]
-  InventoryMovement InventoryMovement[]
-  valuationMethod   ValuationMethod     @default(FIFO)
+  id                  String                @id @default(uuid())
+  barcode             String?               @unique
+  name                String
+  companyId           String
+  description         String?
+  costPrice           Float                 @default(0.0)
+  salesPrice          Float                 @default(0.0)
+  wholesalePrice      Float                 @default(0.0)
+  avgPrice            Float?                @default(0.0)
+  stock               Int                   @default(0)
+  reorderLevel        Int?
+  isActive            Boolean               @default(true)
+  origin              String?
+  family              String?
+  subFamily           String?
+  taxRate             Float                 @default(0.16)
+  discountRate        Float                 @default(0.0)
+  profitMargin        Float?
+  location            String?
+  packaging           String?
+  category            String?
+  nrv                 Float?
+  itemType            String?
+  imageUrl            String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  invoices            InvoiceItem[]
+  warehouses          WarehouseStock[]
+  InventoryMovement   InventoryMovement[]
+  valuationMethod     ValuationMethod       @default(FIFO)
+  PurchaseInvoiceItem PurchaseInvoiceItem[]
 
   @@index([companyId])
 }
