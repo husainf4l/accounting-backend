@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JournalEntryService } from './journal-entry.service';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,29 +24,32 @@ export class JournalEntryController {
       date: Date;
       transactions: {
         accountId: string;
-        amount: number;
+        debit: number;
+        credit: number;
         currency?: string;
         notes?: string;
       }[];
     },
   ) {
-    
     const { date, transactions } = body;
     const companyId = req.user.companyId;
 
+    // Validate input
     if (!date || !transactions || transactions.length === 0) {
       throw new Error('Date and transactions are required.');
     }
 
+    // Calculate total debit and credit
     const totalDebit = transactions.reduce(
-      (sum, t) => (t.amount > 0 ? sum + t.amount : sum),
+      (sum, t) => sum + (t.debit || 0),
       0,
     );
     const totalCredit = transactions.reduce(
-      (sum, t) => (t.amount < 0 ? sum + Math.abs(t.amount) : sum),
+      (sum, t) => sum + (t.credit || 0),
       0,
     );
 
+    // Check if debits and credits are balanced
     if (totalDebit !== totalCredit) {
       throw new Error(
         'Transactions are unbalanced. Debit and Credit totals must match.',
@@ -48,16 +59,20 @@ export class JournalEntryController {
     // Transform transactions to match the expected structure
     const transformedTransactions = transactions.map((t) => ({
       accountId: t.accountId,
-      debit: t.amount > 0 ? t.amount : null,
-      credit: t.amount < 0 ? Math.abs(t.amount) : null,
-      currency: t.currency || 'JO',
+      debit: t.debit || null, // Use provided debit or null
+      credit: t.credit || null, // Use provided credit or null
+      currency: t.currency || 'JOD', // Default to JOD
       notes: t.notes || null,
-      companyId: companyId, // Include the company ID
+      companyId: companyId, // Include company ID
     }));
 
+    // Log for debugging
+    console.log('Transformed Transactions:', transformedTransactions);
+
+    // Pass data to the service
     return this.journalEntryService.createJournalEntry(companyId, {
       date,
-      transactions: transformedTransactions, // Use the transformed structure
+      transactions: transformedTransactions,
     });
   }
 

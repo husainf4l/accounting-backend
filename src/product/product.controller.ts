@@ -6,12 +6,14 @@ import {
   Get,
   UseGuards,
   Query,
+  Body,
 } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ProductService } from './product.service';
 import { AuthGuard } from '@nestjs/passport';
+import { CreateProductDto } from './dto/CreateProductDto';
 
 @Controller('product')
 export class ProductController {
@@ -99,5 +101,15 @@ export class ProductController {
   async getStockAlerts(@Req() req: any) {
     const companyId = req.user.companyId;
     return this.productsService.getStockAlerts(companyId);
+  }
+
+  @Post()
+  async createProduct(@Body() createProductDto: CreateProductDto) {
+    return this.productsService.createProduct(createProductDto);
+  }
+
+  @Post('bulk')
+  async createProducts(@Body('data') createProductDtos: CreateProductDto[]) {
+    return this.productsService.createProducts(createProductDtos);
   }
 }

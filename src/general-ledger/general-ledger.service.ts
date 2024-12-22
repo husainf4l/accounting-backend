@@ -11,58 +11,57 @@ export class GeneralLedgerService {
 
 
     async updateGeneralLedger(companyId: string): Promise<void> {
-        // Step 1: Fetch all accounts and their children (single query)
         const accounts = await this.prisma.account.findMany({
-            where: { companyId },
-            select: { id: true, parentAccountId: true, openingBalance: true },
-            orderBy: { hierarchyCode: 'desc' }, // Start from the deepest accounts
+          where: { companyId },
+          select: { id: true, parentAccountId: true, openingBalance: true },
+          orderBy: { hierarchyCode: 'desc' },
         });
-
-        // Step 2: Fetch all transactions for these accounts (batch query)
+      
         const accountIds = accounts.map((account) => account.id);
         const transactions = await this.prisma.transaction.findMany({
-            where: { accountId: { in: accountIds } },
-            select: { accountId: true, debit: true, credit: true },
+          where: { accountId: { in: accountIds } },
+          select: { accountId: true, debit: true, credit: true },
         });
-
-        // Step 3: Calculate balances
+      
         const accountBalances = new Map<string, number>();
-
-        // Initialize account balances with transactions
         for (const account of accounts) {
-            const accountTransactions = transactions.filter((t) => t.accountId === account.id);
-            const openingBalance = account.openingBalance || 0;
-            const transactionBalance = accountTransactions.reduce(
-                (sum, t) => sum + (t.debit || 0) - (t.credit || 0),
-                openingBalance,
+          const accountTransactions = transactions.filter((t) => t.accountId === account.id);
+          const openingBalance = account.openingBalance || 0;
+          const transactionBalance = accountTransactions.reduce(
+            (sum, t) => sum + (t.debit || 0) - (t.credit || 0),
+            openingBalance,
+          );
+          accountBalances.set(account.id, transactionBalance);
+        }
+      
+        for (const account of accounts) {
+          if (account.parentAccountId) {
+            const childBalance = accountBalances.get(account.id) || 0;
+            accountBalances.set(
+              account.parentAccountId,
+              (accountBalances.get(account.parentAccountId) || 0) + childBalance,
             );
-
-            accountBalances.set(account.id, transactionBalance);
+          }
         }
-
-        // Aggregate child balances
-        for (const account of accounts) {
-            if (account.parentAccountId) {
-                const childBalance = accountBalances.get(account.id) || 0;
-                accountBalances.set(
-                    account.parentAccountId,
-                    (accountBalances.get(account.parentAccountId) || 0) + childBalance,
-                );
-            }
+      
+        const batchSize = 50;
+        const accountEntries = Array.from(accountBalances.entries());
+      
+        for (let i = 0; i < accountEntries.length; i += batchSize) {
+          const batch = accountEntries.slice(i, i + batchSize);
+      
+          for (const [accountId, balance] of batch) {
+            await this.prisma.account.update({
+              where: { id: accountId },
+              data: { currentBalance: balance },
+            });
+          }
         }
-
-        // Step 4: Update all account balances in bulk
-        const updatePromises = Array.from(accountBalances.entries()).map(([accountId, balance]) =>
-            this.prisma.account.update({
-                where: { id: accountId },
-                data: { currentBalance: balance },
-            }),
-        );
-
-        await Promise.all(updatePromises);
-
+      
         console.log('General ledger updated successfully');
-    }
+      }
+      
+      
 
 
     private async calculateAccountBalance(account: any, accountBalances: Map<string, number>): Promise<number> {
@@ -88,6 +87,7 @@ export class GeneralLedgerService {
                 balance += childBalance;
             }
         }
+        
 
         return balance;
     }

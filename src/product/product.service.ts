@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
+import { CreateProductDto } from './dto/CreateProductDto';
 
 @Injectable()
 export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
 
   async uploadProducts(filePath: string, companyId: string): Promise<any> {
     console.log('Started processing file:', filePath);
@@ -164,9 +165,11 @@ export class ProductService {
     return formattedInventory;
   }
 
-
-
-  async generateReport(companyId: string, startDate?: string, endDate?: string) {
+  async generateReport(
+    companyId: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
     const inventory = await this.inventory(companyId, startDate, endDate);
 
     // Format the inventory data for the report
@@ -182,8 +185,6 @@ export class ProductService {
     return reportData;
   }
 
-
-
   async getStockAlerts(companyId: string) {
     const alerts = await this.prisma.product.findMany({
       where: {
@@ -197,5 +198,76 @@ export class ProductService {
     return alerts;
   }
 
+  async createProduct(createProductDto: CreateProductDto) {
+    const {
+      barcode,
+      name,
+      companyId,
+      description,
+      costPrice,
+      salesPrice,
+      wholesalePrice,
+      avgPrice,
+      stock,
+      reorderLevel,
+      origin,
+      family,
+      subFamily,
+      taxRate = 0.16,
+      discountRate = 0.0,
+      profitMargin,
+      location,
+      packaging,
+      category,
+      nrv,
+      itemType,
+      imageUrl,
+    } = createProductDto;
 
+    return await this.prisma.product.create({
+      data: {
+        barcode,
+        name,
+        companyId,
+        description,
+        costPrice,
+        salesPrice,
+        wholesalePrice,
+        avgPrice,
+        stock,
+        reorderLevel,
+        origin,
+        family,
+        subFamily,
+        taxRate,
+        discountRate,
+        profitMargin,
+        location,
+        packaging,
+        category,
+        nrv,
+        itemType,
+        imageUrl,
+      },
+    });
+  }
+
+  async createProducts(createProductDtos: CreateProductDto[]) {
+    const transformedData = createProductDtos.map((product) => ({
+      ...product,
+      costPrice: parseFloat(product.costPrice?.toString() || '0'), // Ensure it's a number
+      salesPrice: parseFloat(product.salesPrice?.toString() || '0'), // Ensure it's a number
+      wholesalePrice: parseFloat(product.wholesalePrice?.toString() || '0'), // Ensure it's a number
+      stock: parseInt(product.stock?.toString() || '0', 10), // Ensure it's an integer
+      isActive:
+        typeof product.isActive === 'string'
+          ? product.isActive.toLowerCase().trim() === 'true' // Safely handle strings
+          : Boolean(product.isActive), // Ensure a boolean value
+    }));
+
+    return await this.prisma.product.createMany({
+      data: transformedData,
+      skipDuplicates: true,
+    });
+  }
 }

@@ -8,10 +8,10 @@ export class ChartOfAccountsService {
   constructor(
     private prisma: PrismaService,
     private generalLedger: GeneralLedgerService,
-  ) { }
+  ) {}
 
   // Get all accounts
-  async getAllAccounts(companyId: string): Promise<any[]> {
+  async getAllAccounts2(companyId: string): Promise<any[]> {
     await this.generalLedger.updateGeneralLedger(companyId);
     return this.prisma.account.findMany({
       where: { companyId: companyId },
@@ -21,7 +21,9 @@ export class ChartOfAccountsService {
         accountType: true,
         hierarchyCode: true,
         currentBalance: true,
-        mainAccount: true
+        mainAccount: true,
+        openingBalance: true,
+        transactions: true,
       },
       orderBy: [
         {
@@ -34,12 +36,82 @@ export class ChartOfAccountsService {
     });
   }
 
+  async getAllAccounts(companyId: string): Promise<any[]> {
+    await this.generalLedger.updateGeneralLedger(companyId);
+    // Step 1: Fetch accounts
+    const accounts = await this.prisma.account.findMany({
+      where: { companyId: companyId },
+      select: {
+        id: true,
+        name: true,
+        accountType: true,
+        hierarchyCode: true,
+        openingBalance: true,
+        currentBalance: true,
+      },
+      orderBy: [
+        {
+          hierarchyCode: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
+    });
+
+    // Step 2: Fetch transactions and calculate totals
+    const accountIds = accounts.map((account) => account.id);
+    const transactions = await this.prisma.transaction.groupBy({
+      by: ['accountId'],
+      where: {
+        accountId: { in: accountIds },
+      },
+      _sum: {
+        debit: true,
+        credit: true,
+      },
+    });
+
+    // Step 3: Map transaction totals to accounts
+    const transactionMap = new Map<
+      string,
+      { totalDebit: number; totalCredit: number }
+    >();
+    transactions.forEach((tx) => {
+      transactionMap.set(tx.accountId, {
+        totalDebit: tx._sum.debit || 0,
+        totalCredit: tx._sum.credit || 0,
+      });
+    });
+
+    // Step 4: Calculate current balance for each account
+    const result = accounts.map((account) => {
+      const totals = transactionMap.get(account.id) || {
+        totalDebit: 0,
+        totalCredit: 0,
+      };
+
+      return {
+        id: account.id,
+        name: account.name,
+        accountType: account.accountType,
+        hierarchyCode: account.hierarchyCode,
+        openingBalance: account.openingBalance,
+        totalDebit: totals.totalDebit,
+        totalCredit: totals.totalCredit,
+        currentBalance: account.currentBalance,
+      };
+    });
+
+    return result;
+  }
+
   // Get a single account by ID
   async getAccountById(id: string, companyId: string): Promise<Account | null> {
     return this.prisma.account.findUnique({
       where: {
         companyId: companyId,
-        id: id
+        id: id,
       },
       include: {
         parentAccount: true,
@@ -77,9 +149,9 @@ export class ChartOfAccountsService {
   }
 
   async initializeChartOfAccounts(companyId: string): Promise<string> {
-    const existingAccounts = await this.prisma.account.findMany(
-      { where: { companyId: companyId } }
-    );
+    const existingAccounts = await this.prisma.account.findMany({
+      where: { companyId: companyId },
+    });
     if (existingAccounts.length > 0) {
       console.log('Chart of Accounts already initialized.');
       return 'Chart of Accounts already initialized.';
@@ -352,7 +424,6 @@ export class ChartOfAccountsService {
       },
     ];
 
-
     // Step 2: Create all accounts
     for (const account of accounts) {
       const parentAccount = accounts.find(
@@ -368,13 +439,13 @@ export class ChartOfAccountsService {
           mainAccount: account.mainAccount,
           parentAccountId: parentAccount
             ? (
-              await this.prisma.account.findFirst({
-                where: {
-                  companyId: companyId,
-                  hierarchyCode: parentAccount.hierarchyCode
-                },
-              })
-            )?.id
+                await this.prisma.account.findFirst({
+                  where: {
+                    companyId: companyId,
+                    hierarchyCode: parentAccount.hierarchyCode,
+                  },
+                })
+              )?.id
             : null,
           currentBalance: 0,
         },

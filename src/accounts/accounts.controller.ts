@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { AccountsService } from './accounts.service';
 import { AuthGuard } from '@nestjs/passport';
+import { CreateAccountDto } from './dto/CreateAccountDto';
 
 @Controller('accounts')
 export class AccountsController {
@@ -48,4 +49,11 @@ export class AccountsController {
   async getMainAccounts() {
     return this.accountsService.getMainAccount();
   }
+
+
+  @Post('bulk')
+  async bulkUpload(@Body('data') createAccountDtos: CreateAccountDto[]) {
+    return this.accountsService.bulkCreate(createAccountDtos);
+  }
+
 }

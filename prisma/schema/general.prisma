@@ -1,6 +1,6 @@
 model Account {
   id              String         @id @default(uuid())
-  hierarchyCode   String
+  hierarchyCode   String         
   name            String
   companyId       String
   accountType     AccountType

@@ -8,7 +8,6 @@ export class JournalEntryService {
 
   async createJournalEntry(
     companyId: string,
-
     data: {
       date: Date;
       transactions: {
@@ -17,7 +16,7 @@ export class JournalEntryService {
         credit?: number;
         currency?: string;
         notes?: string;
-        companyId: string;
+        companyId?: string;
       }[];
     },
   ) {
@@ -26,27 +25,17 @@ export class JournalEntryService {
     // Ensure date is in ISO-8601 format
     const isoDate = new Date(date).toISOString();
 
-    // Calculate total debit and credit
-    const totalDebit = transactions.reduce((sum, t) => sum + (t.debit || 0), 0);
-    const totalCredit = transactions.reduce(
-      (sum, t) => sum + (t.credit || 0),
-      0,
-    );
-
-    // Check if debits and credits are balanced
-    if (totalDebit !== totalCredit) {
-      throw new BadRequestException('Total debit and credit must be equal!');
-    }
-
     // Prepare transaction data
     const transactionData = transactions.map((transaction) => ({
-      companyId: 'thiscompanyId',
+      companyId: companyId,
       accountId: transaction.accountId,
-      debit: transaction.debit ?? null, // Use `null` if `undefined`
-      credit: transaction.credit ?? null, // Use `null` if `undefined`
+      debit: transaction.debit ?? null,
+      credit: transaction.credit ?? null,
       currency: transaction.currency || 'JO',
       notes: transaction.notes || null,
     }));
+
+    console.log('Transaction Data:', transactionData);
 
     // Create the journal entry
     return this.prisma.journalEntry.create({
