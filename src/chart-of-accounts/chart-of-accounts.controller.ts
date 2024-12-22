@@ -32,7 +32,14 @@ export class ChartOfAccountsController {
     return this.chartOfAccountsService.getAllAccounts(companyId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
+  @Get('reconsole')
+  async reconsole(@Req() req: any) {
+    const companyId = req.user.companyId;
+    console.log(companyId)
 
+    return this.chartOfAccountsService.reconsole(companyId);
+  }
 
 
   @UseGuards(JwtAuthGuard)

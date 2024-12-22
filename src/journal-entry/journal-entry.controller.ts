@@ -6,14 +6,18 @@ import {
   Param,
   Req,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { JournalEntryService } from './journal-entry.service';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
+import { CreateJournalDto } from './dto/create-journal.dto';
 
 @Controller('journal-entry')
 export class JournalEntryController {
-  constructor(private readonly journalEntryService: JournalEntryService) {}
+  constructor(private readonly journalEntryService: JournalEntryService) { }
 
   @UseGuards(AuthGuard('jwt'))
   @Post()
@@ -84,8 +88,24 @@ export class JournalEntryController {
     return this.journalEntryService.getAllJournalEntries(companyId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   async getJournalEntryById(@Param('id') id: string) {
     return this.journalEntryService.getJournalEntryById(id);
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('bulk')
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async createBulk(@Req() req: any, @Body() entries: CreateJournalDto[]) {
+    const companyId = req.user.companyId;
+
+    if (!companyId) {
+      throw new BadRequestException('Company ID is missing from the user payload.');
+    }
+
+    return this.journalEntryService.createBulk(entries, companyId);
+  }
+
+
 }

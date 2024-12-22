@@ -10,36 +10,35 @@ export class AccountsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly generalLedgerService: GeneralLedgerService,
-  ) {}
+  ) { }
 
   async getAccountStatement(
     accountId: string,
     page = 1,
     limit = 10,
+    companyId: string,
     startDate?: string,
     endDate?: string,
   ) {
-    const balance =
-      await this.generalLedgerService.getAccountBalance(accountId);
-    console.log(balance);
     const offset = (page - 1) * limit;
 
+    // Parse dates to ISO format
     const startDateISO = startDate ? formatISO(parseISO(startDate)) : undefined;
     const endDateISO = endDate ? formatISO(parseISO(endDate)) : undefined;
 
     // Fetch account details
     const accountDetails = await this.prisma.account.findUnique({
-      where: { id: accountId },
-      include: { transactions: true },
+      where: { id: accountId, companyId: companyId },
     });
 
     if (!accountDetails) {
       throw new Error(`Account with ID ${accountId} not found`);
     }
 
+    // Base opening balance
     let openingBalance = accountDetails.openingBalance || 0;
-    let balanceO = balance +accountDetails.openingBalance
 
+    // Calculate opening balance if a startDate is provided
     if (startDateISO) {
       const priorTransactions = await this.prisma.transaction.findMany({
         where: {
@@ -55,7 +54,7 @@ export class AccountsService {
       );
     }
 
-    // Fetch transactions within the date range
+    // Fetch transactions within the specified date range
     const transactionFilters: any = { accountId };
     if (startDateISO)
       transactionFilters.createdAt = { gte: new Date(startDateISO) };
@@ -73,12 +72,14 @@ export class AccountsService {
       take: limit,
     });
 
+    // Count total transactions for pagination
     const totalTransactions = await this.prisma.transaction.count({
       where: transactionFilters,
     });
 
     const totalPages = Math.ceil(totalTransactions / limit);
 
+    // Calculate running balance for transactions
     let runningBalance = openingBalance;
     const transactionsWithBalance = transactions.map((transaction) => {
       const { debit, credit } = transaction;
@@ -87,19 +88,32 @@ export class AccountsService {
       return { ...transaction, runningBalance };
     });
 
-    return {
-      accountDetails,
-      openingBalance,
-      balanceO,
+    // Construct the response
+    const response = {
+      accountDetails: {
+        ...accountDetails,
+        openingBalance,
+      },
       transactions: transactionsWithBalance,
-
       pagination: {
         totalRecords: totalTransactions,
         currentPage: page,
         totalPages,
       },
+      filters: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+      },
+      message:
+        totalTransactions === 0
+          ? "No transactions found for the given account and date range."
+          : null,
     };
+
+    return response;
   }
+
+
 
   async getCriticalAccounts(companyId: string, codes: string | string[] = []) {
     const codeArray = Array.isArray(codes) ? codes : [codes];
@@ -134,10 +148,11 @@ export class AccountsService {
     });
   }
 
-  async getMainAccount() {
+  async getMainAccount(companyId: string) {
     return await this.prisma.account.findMany({
       where: {
         mainAccount: true,
+        companyId: companyId
       },
     });
   }
@@ -208,8 +223,8 @@ export class AccountsService {
 
       hierarchyCode = maxSubAccount
         ? (
-            parseInt(maxSubAccount.hierarchyCode.split('.').pop() || '0') + 1
-          ).toString()
+          parseInt(maxSubAccount.hierarchyCode.split('.').pop() || '0') + 1
+        ).toString()
         : '1';
 
       hierarchyCode = `${parentAccount.hierarchyCode}.${hierarchyCode}`;
@@ -312,4 +327,53 @@ export class AccountsService {
 
     return results;
   }
+
+
+  async delete(accountId: string, companyId: string) {
+    await this.prisma.account.delete({ where: { companyId: companyId, id: accountId } })
+  }
+
+
+
+  async updateCurrentBalance(accountId: string, debit: number, credit: number, companyId: string) {
+    const netChange = (debit || 0) - (credit || 0);
+
+    // Update the current account's balance
+    await this.prisma.account.update({
+      where: { id: accountId },
+      data: {
+        currentBalance: {
+          increment: netChange,
+        },
+      },
+    });
+
+    // Propagate changes up the hierarchy
+    let parentAccountId = (
+      await this.prisma.account.findUnique({
+        where: { id: accountId },
+        select: { parentAccountId: true },
+      })
+    )?.parentAccountId;
+
+    while (parentAccountId) {
+      await this.prisma.account.update({
+        where: { id: parentAccountId },
+        data: {
+          currentBalance: {
+            increment: netChange,
+          },
+        },
+      });
+
+      parentAccountId = (
+        await this.prisma.account.findUnique({
+          where: { id: parentAccountId },
+          select: { parentAccountId: true },
+        })
+      )?.parentAccountId;
+    }
+  }
+
+
 }

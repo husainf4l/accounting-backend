@@ -8,10 +8,10 @@ export class ChartOfAccountsService {
   constructor(
     private prisma: PrismaService,
     private generalLedger: GeneralLedgerService,
-  ) {}
+  ) { }
 
   // Get all accounts
-  async getAllAccounts2(companyId: string): Promise<any[]> {
+  async getAllAccounts22(companyId: string): Promise<any[]> {
     await this.generalLedger.updateGeneralLedger(companyId);
     return this.prisma.account.findMany({
       where: { companyId: companyId },
@@ -36,9 +36,14 @@ export class ChartOfAccountsService {
     });
   }
 
+
+
+  async reconsole(companyId: string): Promise<any[]> {
+    await this.generalLedger.reconcileGeneralLedger(companyId);
+    return this.getAllAccounts(companyId);
+  }
+
   async getAllAccounts(companyId: string): Promise<any[]> {
-    await this.generalLedger.updateGeneralLedger(companyId);
-    // Step 1: Fetch accounts
     const accounts = await this.prisma.account.findMany({
       where: { companyId: companyId },
       select: {
@@ -48,6 +53,7 @@ export class ChartOfAccountsService {
         hierarchyCode: true,
         openingBalance: true,
         currentBalance: true,
+        mainAccount: true,
       },
       orderBy: [
         {
@@ -100,6 +106,7 @@ export class ChartOfAccountsService {
         totalDebit: totals.totalDebit,
         totalCredit: totals.totalCredit,
         currentBalance: account.currentBalance,
+        mainAccount: account.mainAccount,
       };
     });
 
@@ -439,13 +446,13 @@ export class ChartOfAccountsService {
           mainAccount: account.mainAccount,
           parentAccountId: parentAccount
             ? (
-                await this.prisma.account.findFirst({
-                  where: {
-                    companyId: companyId,
-                    hierarchyCode: parentAccount.hierarchyCode,
-                  },
-                })
-              )?.id
+              await this.prisma.account.findFirst({
+                where: {
+                  companyId: companyId,
+                  hierarchyCode: parentAccount.hierarchyCode,
+                },
+              })
+            )?.id
             : null,
           currentBalance: 0,
         },

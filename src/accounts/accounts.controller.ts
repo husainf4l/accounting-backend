@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -32,6 +33,7 @@ export class AccountsController {
       accountId,
       +page,
       +limit,
+      companyId,
       startDate,
       endDate,
     );
@@ -45,9 +47,12 @@ export class AccountsController {
     return this.accountsService.createAccount(companyId, accountData);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('main')
-  async getMainAccounts() {
-    return this.accountsService.getMainAccount();
+  async getMainAccounts(@Req() req: any) {
+    const companyId = req.user.companyId;
+
+    return this.accountsService.getMainAccount(companyId);
   }
 
 
@@ -56,4 +61,11 @@ export class AccountsController {
     return this.accountsService.bulkCreate(createAccountDtos);
   }
 
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('delete')
+  async Delete(@Req() req: any, @Param('accountId') accountId: string) {
+    const companyId = req.user.companyId;
+
+    return this.accountsService.delete(companyId, accountId);
+  }
 }

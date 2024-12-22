@@ -1,10 +1,12 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { CreateJournalDto } from './dto/create-journal.dto';
+import { AccountsService } from 'src/accounts/accounts.service';
 
 @Injectable()
 export class JournalEntryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private accountsService: AccountsService) { }
 
   async createJournalEntry(
     companyId: string,
@@ -37,8 +39,8 @@ export class JournalEntryService {
 
     console.log('Transaction Data:', transactionData);
 
-    // Create the journal entry
-    return this.prisma.journalEntry.create({
+    // Create the journal entry with all transactions
+    const journalEntry = await this.prisma.journalEntry.create({
       data: {
         date: isoDate,
         companyId: companyId,
@@ -46,7 +48,20 @@ export class JournalEntryService {
           create: transactionData,
         },
       },
+      include: { transactions: true }, // Include transactions for further processing
     });
+
+    // Update the current balance for each transaction's account
+    for (const transaction of journalEntry.transactions) {
+      await this.accountsService.updateCurrentBalance(
+        transaction.accountId,
+        transaction.debit || 0,
+        transaction.credit || 0,
+        companyId,
+      );
+    }
+
+    return journalEntry;
   }
 
   async getAllJournalEntries(companyId: string) {
@@ -78,102 +93,185 @@ export class JournalEntryService {
   async createInvoiceJournalEntry(data: any, accounts: any, companyId: string) {
     const InvoiceTypeCodeName = data.InvoiceTypeCodeName;
 
-    const transaction =
-      InvoiceTypeCodeName == '021'
+    const transactions =
+      InvoiceTypeCodeName === '021'
         ? [
-            {
-              accountId: data.clientId,
-              debit: data.taxInclusiveAmount,
-              credit: null,
-              currency: 'JO',
-              notes: 'Invoice payment received',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.salesTax.id,
-              debit: null,
-              credit: data.taxAmount,
-              currency: 'JO',
-              notes: 'Sales tax recorded',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.salesRevenue.id,
-              debit: null,
-              credit: data.taxExclusiveAmount,
-              currency: 'JO',
-              notes: 'Revenue recognized',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.cogs.id,
-              debit: accounts.totalCOGS,
-              credit: null,
-              currency: 'JO',
-              notes: 'Cost of goods sold recorded',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.inventoryAccount.id,
-              debit: null,
-              credit: accounts.totalCOGS,
-              currency: 'JO',
-              notes: 'Inventory reduced for sold items',
-              companyId: companyId,
-            },
-          ]
+          {
+            accountId: data.clientId,
+            debit: data.taxInclusiveAmount,
+            credit: null,
+            currency: 'JO',
+            notes: 'Invoice payment received',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.salesTax.id,
+            debit: null,
+            credit: data.taxAmount,
+            currency: 'JO',
+            notes: 'Sales tax recorded',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.salesRevenue.id,
+            debit: null,
+            credit: data.taxExclusiveAmount,
+            currency: 'JO',
+            notes: 'Revenue recognized',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.cogs.id,
+            debit: accounts.totalCOGS,
+            credit: null,
+            currency: 'JO',
+            notes: 'Cost of goods sold recorded',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.inventoryAccount.id,
+            debit: null,
+            credit: accounts.totalCOGS,
+            currency: 'JO',
+            notes: 'Inventory reduced for sold items',
+            companyId: companyId,
+          },
+        ]
         : [
-            {
-              accountId: data.cashAccountId,
-              debit: data.taxInclusiveAmount,
-              credit: null,
-              currency: 'JO',
-              notes: 'Invoice payment received',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.salesTax.id,
-              debit: null,
-              credit: data.taxAmount,
-              currency: 'JO',
-              notes: 'Sales tax recorded',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.salesRevenue.id,
-              debit: null,
-              credit: data.taxExclusiveAmount,
-              currency: 'JO',
-              notes: 'Revenue recognized',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.cogs.id,
-              debit: accounts.totalCOGS,
-              credit: null,
-              currency: 'JO',
-              notes: 'Cost of goods sold recorded',
-              companyId: companyId,
-            },
-            {
-              accountId: accounts.inventoryAccount.id,
-              debit: null,
-              credit: accounts.totalCOGS,
-              currency: 'JO',
-              notes: 'Inventory reduced for sold items',
-              companyId: companyId,
-            },
-          ];
+          {
+            accountId: data.cashAccountId,
+            debit: data.taxInclusiveAmount,
+            credit: null,
+            currency: 'JO',
+            notes: 'Invoice payment received',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.salesTax.id,
+            debit: null,
+            credit: data.taxAmount,
+            currency: 'JO',
+            notes: 'Sales tax recorded',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.salesRevenue.id,
+            debit: null,
+            credit: data.taxExclusiveAmount,
+            currency: 'JO',
+            notes: 'Revenue recognized',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.cogs.id,
+            debit: accounts.totalCOGS,
+            credit: null,
+            currency: 'JO',
+            notes: 'Cost of goods sold recorded',
+            companyId: companyId,
+          },
+          {
+            accountId: accounts.inventoryAccount.id,
+            debit: null,
+            credit: accounts.totalCOGS,
+            currency: 'JO',
+            notes: 'Inventory reduced for sold items',
+            companyId: companyId,
+          },
+        ];
 
-    return this.prisma.journalEntry.create({
+    const journalEntry = await this.prisma.journalEntry.create({
       data: {
         date: new Date(),
         companyId: companyId,
         transactions: {
-          create: transaction,
+          create: transactions,
         },
       },
       include: { transactions: true },
     });
+
+    // Update the current balance for each account involved in the transactions
+
+
+    for (const transaction of transactions) {
+      await this.accountsService.updateCurrentBalance(
+        transaction.accountId,
+        transaction.debit || 0,
+        transaction.credit || 0,
+        companyId
+      );
+    }
+
+    return journalEntry;
   }
+
+
+
+  async createBulk(entries: CreateJournalDto[], companyId: string) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      throw new BadRequestException('Entries must be a non-empty array.');
+    }
+
+    // Extract unique hierarchy codes
+    const hierarchyCodes = [
+      ...new Set(entries.map((entry) => entry.hierarchyCode).filter((code) => code)),
+    ];
+
+    // Fetch all accounts matching hierarchy codes and companyId in one query
+    const accounts = await this.prisma.account.findMany({
+      where: {
+        hierarchyCode: { in: hierarchyCodes },
+        companyId,
+      },
+    });
+
+    // Create a map of hierarchyCode -> accountId
+    const accountMap = accounts.reduce((map, account) => {
+      map[account.hierarchyCode] = account.id;
+      return map;
+    }, {} as Record<string, string>);
+
+    const transactions = [];
+
+    // Process each entry and map to accountId
+    for (const entry of entries) {
+      const accountId = accountMap[entry.hierarchyCode];
+
+      if (!accountId) {
+        throw new BadRequestException(
+          `Account not found for hierarchyCode: ${entry.hierarchyCode} and companyId: ${companyId}`,
+        );
+      }
+
+      transactions.push({
+        accountId,
+        debit: entry.debit ?? 0,
+        credit: entry.credit ?? 0,
+        companyId,
+        notes: entry.notes
+      });
+    }
+
+    // Create a new journal entry
+    const journalEntry = await this.prisma.journalEntry.create({
+      data: {
+        companyId,
+      },
+    });
+
+    // Link all transactions to the journal entry
+    await this.prisma.transaction.createMany({
+      data: transactions.map((transaction) => ({
+        ...transaction,
+        journalEntryId: journalEntry.id,
+      })),
+    });
+
+    return {
+      journalEntryId: journalEntry.id,
+      transactionsCount: transactions.length,
+    };
+  }
+
 }
