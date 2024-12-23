@@ -14,18 +14,31 @@ export class ReceiptService {
     private readonly employeeService: EmployeesService,
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   async getReceiptData(companyId: string) {
-    const [clients, accountManagers, cashAccounts, receiptNumber] =
-      await Promise.all([
-        this.clientsService.getClients(companyId),
-        this.employeeService.getAccountManagers(companyId),
-        this.accountsService.getAccountsUnderCode('1.1.1', companyId),
-        this.getNextReceiptNumber(),
-      ]);
+    const [
+      clients,
+      accountManagers,
+      cashAccounts,
+      chequeAccounts,
+      receiptNumber,
+    ] = await Promise.all([
+      this.clientsService.getClients(companyId),
+      this.employeeService.getAccountManagers(companyId),
+      this.accountsService.getAccountsUnderCode('1.1.1', companyId),
+      this.accountsService.getAccountsUnderCode('1.1.5', companyId),
 
-    return { clients, accountManagers, cashAccounts, receiptNumber };
+      this.getNextReceiptNumber(),
+    ]);
+
+    return {
+      clients,
+      accountManagers,
+      cashAccounts,
+      chequeAccounts,
+      receiptNumber,
+    };
   }
 
   private async getNextReceiptNumber() {
@@ -47,7 +60,7 @@ export class ReceiptService {
     } = createReceiptDto;
 
     console.log(createReceiptDto);
-    // Ensure customer exists
+
     const customer = await this.prisma.customer.findUnique({
       where: { accountId: clientId },
       select: { id: true },
@@ -69,7 +82,7 @@ export class ReceiptService {
       data: {
         ...receiptData,
         companyId: companyId,
-        accountId: clientId, // Directly assigning the customerId
+        accountId: clientId,
         customerId: customer.id,
         accountManagerId: accountManagerId || null, // Optional, can be null
         TransactionAccountId: TransactionAccountId || null, // Optional, can be null
@@ -98,7 +111,7 @@ export class ReceiptService {
         credit: null,
         currency: 'JO',
         notes: `Receipt payment for client ${clientId}`,
-        companyId: companyId
+        companyId: companyId,
       },
       {
         accountId: clientId, // Credit Client Account
@@ -106,8 +119,7 @@ export class ReceiptService {
         credit: receipt.totalAmount, // Credit the total amount
         currency: 'JO',
         notes: `Payment received from client ${clientId}`,
-        companyId: companyId
-
+        companyId: companyId,
       },
     ];
 
@@ -116,18 +128,16 @@ export class ReceiptService {
       {
         date: new Date(),
         transactions: transactions,
-      }
+      },
     );
-
 
     return receipt;
   }
 
   async getReceiptList(companyId) {
     return this.prisma.receipt.findMany({
-
       where: { companyId },
-      include: { customer: true }
+      include: { customer: true },
     });
   }
 }

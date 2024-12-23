@@ -5,9 +5,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class GeneralLedgerService {
-  constructor(private prisma: PrismaService) { }
-
-
+  constructor(private prisma: PrismaService) {}
 
   async updateGeneralLedger(companyId: string): Promise<void> {
     console.log('Started updating general ledger');
@@ -50,7 +48,7 @@ export class GeneralLedgerService {
       const openingBalance = account.openingBalance || 0;
       const transactionBalance = account.transactions.reduce(
         (sum, tx) => sum + (tx.debit || 0) - (tx.credit || 0),
-        0
+        0,
       );
       accountBalances.set(account.id, openingBalance + transactionBalance);
     });
@@ -61,19 +59,23 @@ export class GeneralLedgerService {
       const childBalance = accountBalances.get(account.id) || 0;
       if (account.parentAccountId) {
         const parentBalance = accountBalances.get(account.parentAccountId) || 0;
-        accountBalances.set(account.parentAccountId, parentBalance + childBalance);
+        accountBalances.set(
+          account.parentAccountId,
+          parentBalance + childBalance,
+        );
       }
     });
 
     console.log('Balances calculated and propagated');
 
     // Step 5: Prepare bulk upserts for GeneralLedger
-    const updates = Array.from(accountBalances.entries()).map(([accountId, balance]) =>
-      this.prisma.generalLedger.upsert({
-        where: { accountId },
-        update: { balance, updatedAt: new Date() },
-        create: { accountId, balance, companyId },
-      })
+    const updates = Array.from(accountBalances.entries()).map(
+      ([accountId, balance]) =>
+        this.prisma.generalLedger.upsert({
+          where: { accountId },
+          update: { balance, updatedAt: new Date() },
+          create: { accountId, balance, companyId },
+        }),
     );
 
     // Step 6: Perform updates in batches
@@ -120,17 +122,34 @@ export class GeneralLedgerService {
       const childBalance = accountBalances.get(account.id) || 0;
       if (account.parentAccountId) {
         const parentBalance = accountBalances.get(account.parentAccountId) || 0;
-        accountBalances.set(account.parentAccountId, parentBalance + childBalance);
+        accountBalances.set(
+          account.parentAccountId,
+          parentBalance + childBalance,
+        );
       }
     });
 
-    const updates = Array.from(accountBalances.entries()).map(([accountId, balance]) =>
-      this.prisma.generalLedger.upsert({
-        where: { accountId },
-        update: { balance, updatedAt: new Date() },
-        create: { accountId, balance, companyId },
-      })
+    const updates = Array.from(accountBalances.entries()).map(
+      ([accountId, balance]) =>
+        this.prisma.generalLedger.upsert({
+          where: { accountId },
+          update: { balance, updatedAt: new Date() },
+          create: { accountId, balance, companyId },
+        }),
     );
+
+    const updateAccounts = Array.from(accountBalances.entries()).map(
+      ([accountId, balance]) =>
+        this.prisma.account.update({
+          where: { id: accountId },
+          data: {
+            currentBalance: balance,
+            updatedAt: new Date(),
+          },
+        }),
+    );
+
+    await Promise.all(updateAccounts);
 
     const batchSize = 50;
     for (let i = 0; i < updates.length; i += batchSize) {
@@ -138,9 +157,6 @@ export class GeneralLedgerService {
       await this.prisma.$transaction(batch);
     }
   }
-
-
-
 
   async updateGeneralLedger44(companyId: string): Promise<void> {
     console.log('Started updating general ledger');
@@ -193,19 +209,23 @@ export class GeneralLedgerService {
       const childBalance = accountBalances.get(account.id) || 0;
       if (account.parentAccountId) {
         const parentBalance = accountBalances.get(account.parentAccountId) || 0;
-        accountBalances.set(account.parentAccountId, parentBalance + childBalance);
+        accountBalances.set(
+          account.parentAccountId,
+          parentBalance + childBalance,
+        );
       }
     });
 
     console.log('Computed balances for all accounts');
 
     // Step 6: Prepare bulk upsert queries for the GeneralLedger table
-    const updates = Array.from(accountBalances.entries()).map(([accountId, balance]) =>
-      this.prisma.generalLedger.upsert({
-        where: { accountId },
-        update: { balance, updatedAt: new Date() },
-        create: { accountId, balance, companyId },
-      })
+    const updates = Array.from(accountBalances.entries()).map(
+      ([accountId, balance]) =>
+        this.prisma.generalLedger.upsert({
+          where: { accountId },
+          update: { balance, updatedAt: new Date() },
+          create: { accountId, balance, companyId },
+        }),
     );
 
     // Step 7: Perform updates in a transaction
@@ -218,10 +238,8 @@ export class GeneralLedgerService {
     console.log('General ledger updated successfully.');
   }
 
-
-
   async updateGeneralLedger3(companyId: string): Promise<void> {
-    console.log('Started')
+    console.log('Started');
 
     const affectedTransactions = await this.prisma.transaction.groupBy({
       by: ['accountId'],
@@ -254,32 +272,27 @@ export class GeneralLedgerService {
       const childBalance = accountBalances.get(account.id) || 0;
       if (account.parentAccountId) {
         const parentBalance = accountBalances.get(account.parentAccountId) || 0;
-        accountBalances.set(account.parentAccountId, parentBalance + childBalance);
+        accountBalances.set(
+          account.parentAccountId,
+          parentBalance + childBalance,
+        );
       }
     });
 
     // Step 4: Update GeneralLedger table
-    const updates = Array.from(accountBalances.entries()).map(([accountId, balance]) =>
-      this.prisma.generalLedger.upsert({
-        where: { accountId },
-        update: { balance, updatedAt: new Date() },
-        create: { accountId, balance, companyId },
-      })
+    const updates = Array.from(accountBalances.entries()).map(
+      ([accountId, balance]) =>
+        this.prisma.generalLedger.upsert({
+          where: { accountId },
+          update: { balance, updatedAt: new Date() },
+          create: { accountId, balance, companyId },
+        }),
     );
 
     await this.prisma.$transaction(updates);
 
     console.log('General ledger updated successfully.');
   }
-
-
-
-
-
-
-
-
-
 
   async updateGeneralLedger2(companyId: string): Promise<void> {
     const accounts = await this.prisma.account.findMany({
@@ -319,7 +332,7 @@ export class GeneralLedgerService {
         const childBalance = accountBalances.get(account.id) || 0;
         accountBalances.set(
           account.parentAccountId,
-          (accountBalances.get(account.parentAccountId) || 0) + childBalance
+          (accountBalances.get(account.parentAccountId) || 0) + childBalance,
         );
       }
     }
@@ -329,7 +342,7 @@ export class GeneralLedgerService {
       this.prisma.account.update({
         where: { id },
         data: { currentBalance: balance },
-      })
+      }),
     );
 
     await this.prisma.$transaction(updates);
@@ -337,10 +350,10 @@ export class GeneralLedgerService {
     console.log('General ledger updated successfully');
   }
 
-
-
-
-  private async calculateAccountBalance(account: any, accountBalances: Map<string, number>): Promise<number> {
+  private async calculateAccountBalance(
+    account: any,
+    accountBalances: Map<string, number>,
+  ): Promise<number> {
     // Check if the balance is already calculated
     if (accountBalances.has(account.id)) {
       return accountBalances.get(account.id)!;
@@ -359,15 +372,16 @@ export class GeneralLedgerService {
     // Add balances of all child accounts
     if (account.children && account.children.length > 0) {
       for (const child of account.children) {
-        const childBalance = await this.calculateAccountBalance(child, accountBalances);
+        const childBalance = await this.calculateAccountBalance(
+          child,
+          accountBalances,
+        );
         balance += childBalance;
       }
     }
 
-
     return balance;
   }
-
 
   // Calculate balance dynamically
   async getAccountBalance(accountId: string): Promise<number> {
@@ -393,10 +407,10 @@ export class GeneralLedgerService {
     );
 
     // Return total balance (direct + child)
-    return directBalance + childBalances.reduce((sum, balance) => sum + balance, 0);
+    return (
+      directBalance + childBalances.reduce((sum, balance) => sum + balance, 0)
+    );
   }
-
-
 
   async getStoredBalance(accountId: string): Promise<number> {
     const ledgerEntry = await this.prisma.generalLedger.findUnique({
@@ -404,6 +418,4 @@ export class GeneralLedgerService {
     });
     return ledgerEntry?.balance || 0;
   }
-
-
 }

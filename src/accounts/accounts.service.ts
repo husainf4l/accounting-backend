@@ -10,7 +10,7 @@ export class AccountsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly generalLedgerService: GeneralLedgerService,
-  ) { }
+  ) {}
 
   async getAccountStatement(
     accountId: string,
@@ -106,14 +106,12 @@ export class AccountsService {
       },
       message:
         totalTransactions === 0
-          ? "No transactions found for the given account and date range."
+          ? 'No transactions found for the given account and date range.'
           : null,
     };
 
     return response;
   }
-
-
 
   async getCriticalAccounts(companyId: string, codes: string | string[] = []) {
     const codeArray = Array.isArray(codes) ? codes : [codes];
@@ -152,7 +150,7 @@ export class AccountsService {
     return await this.prisma.account.findMany({
       where: {
         mainAccount: true,
-        companyId: companyId
+        companyId: companyId,
       },
     });
   }
@@ -189,24 +187,22 @@ export class AccountsService {
       mainAccount,
     } = data;
 
+    if (!mainAccount && !parentAccountId) {
+      throw new Error('Parent account ID is required for sub-accounts.');
+    }
+
     let hierarchyCode: string;
 
     if (mainAccount) {
-      // Fetch the maximum hierarchyCode for main accounts
       const maxMainAccount = await this.prisma.account.findFirst({
-        where: {
-          companyId: companyId,
-          mainAccount: true,
-        },
+        where: { companyId, mainAccount: true },
         orderBy: { hierarchyCode: 'desc' },
       });
 
-      // Generate the next hierarchy code for the main account
       hierarchyCode = maxMainAccount
-        ? (parseInt(maxMainAccount.hierarchyCode) + 1).toString()
+        ? (parseInt(maxMainAccount.hierarchyCode || '0', 10) + 1).toString()
         : '1';
     } else {
-      // Fetch the parent account's hierarchyCode
       const parentAccount = await this.prisma.account.findUnique({
         where: { id: parentAccountId },
       });
@@ -215,22 +211,21 @@ export class AccountsService {
         throw new Error(`Parent account with ID ${parentAccountId} not found`);
       }
 
-      // Generate the next sub-hierarchy code
       const maxSubAccount = await this.prisma.account.findFirst({
-        where: { companyId: companyId, parentAccountId },
+        where: { companyId, parentAccountId },
         orderBy: { hierarchyCode: 'desc' },
       });
 
-      hierarchyCode = maxSubAccount
+      const subCode = maxSubAccount
         ? (
-          parseInt(maxSubAccount.hierarchyCode.split('.').pop() || '0') + 1
-        ).toString()
+            parseInt(maxSubAccount.hierarchyCode.split('.').pop() || '0', 10) +
+            1
+          ).toString()
         : '1';
 
-      hierarchyCode = `${parentAccount.hierarchyCode}.${hierarchyCode}`;
+      hierarchyCode = `${parentAccount.hierarchyCode}.${subCode}`;
     }
 
-    // Create the account data
     const accountData: any = {
       name,
       accountType,
@@ -238,12 +233,9 @@ export class AccountsService {
       currentBalance: openingBalance,
       mainAccount,
       hierarchyCode,
-      companyId: companyId,
+      companyId,
+      parentAccountId: mainAccount ? null : parentAccountId,
     };
-
-    if (!mainAccount) {
-      accountData.parentAccountId = parentAccountId || null;
-    }
 
     const newAccount = await this.prisma.account.create({
       data: accountData,
@@ -328,14 +320,18 @@ export class AccountsService {
     return results;
   }
 
-
   async delete(accountId: string, companyId: string) {
-    await this.prisma.account.delete({ where: { companyId: companyId, id: accountId } })
+    await this.prisma.account.delete({
+      where: { companyId: companyId, id: accountId },
+    });
   }
 
-
-
-  async updateCurrentBalance(accountId: string, debit: number, credit: number, companyId: string) {
+  async updateCurrentBalance(
+    accountId: string,
+    debit: number,
+    credit: number,
+    companyId: string,
+  ) {
     const netChange = (debit || 0) - (credit || 0);
 
     // Update the current account's balance
@@ -374,6 +370,4 @@ export class AccountsService {
       )?.parentAccountId;
     }
   }
-
-
 }
