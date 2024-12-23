@@ -6,7 +6,7 @@ model User {
   userName     String    @unique
   name         String
   fcmToken     String?
-  profileImage String    @default("default_image_url")
+  profileImage String    @default("https://firebasestorage.googleapis.com/v0/b/gixatco.firebasestorage.app/o/settings%2Fshared%2Fdownload.jpeg?alt=media&")
   role         UserRole  @default(USER)
   companyId    String? // Active company ID
   tenantId     Int?

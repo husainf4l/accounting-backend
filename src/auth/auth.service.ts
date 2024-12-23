@@ -79,7 +79,7 @@ export class AuthService {
 
     if (existingUser) {
       throw new HttpException(
-        'User already exists with this mobile number',
+        'User already exists with this username or mobile',
         HttpStatus.BAD_REQUEST,
       );
     }
