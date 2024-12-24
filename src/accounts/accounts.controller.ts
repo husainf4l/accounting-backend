@@ -15,7 +15,7 @@ import { CreateAccountDto } from './dto/CreateAccountDto';
 
 @Controller('accounts')
 export class AccountsController {
-  constructor(private readonly accountsService: AccountsService) { }
+  constructor(private readonly accountsService: AccountsService) {}
 
   @UseGuards(AuthGuard('jwt'))
   @Get(':accountId/statement')
@@ -55,10 +55,15 @@ export class AccountsController {
     return this.accountsService.getMainAccount(companyId);
   }
 
-
+  @UseGuards(AuthGuard('jwt'))
   @Post('bulk')
-  async bulkUpload(@Body('data') createAccountDtos: CreateAccountDto[]) {
-    return this.accountsService.bulkCreate(createAccountDtos);
+  async bulkUpload(
+    @Req() req: any,
+    @Body('data') createAccountDtos: CreateAccountDto[],
+  ) {
+    const companyId = req.user.companyId;
+
+    return this.accountsService.bulkCreate(createAccountDtos, companyId);
   }
 
   @UseGuards(AuthGuard('jwt'))

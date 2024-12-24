@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { generateHierarchyCode } from '../utilties/hierarchy.util';
+import { generateCode } from '../utilties/hierarchy.util';
 
 @Injectable()
 export class ClientsService {
@@ -18,7 +18,7 @@ export class ClientsService {
     const accountsReceivable = await this.prisma.account.findFirst({
       where: {
         companyId,
-        hierarchyCode: '1.1.3'
+        code: '1.1.3'
       },
       select: { id: true },
     });
@@ -31,12 +31,12 @@ export class ClientsService {
 
     // Generate hierarchy code for the new client account
     console.log('Generating hierarchy code');
-    const hierarchyCode = await generateHierarchyCode(
+    const code = await generateCode(
       this.prisma,
       accountsReceivable.id,
       companyId
     );
-    console.log('Generated hierarchy code:', hierarchyCode);
+    console.log('Generated hierarchy code:', code);
 
     try {
       // Create the new account for the client
@@ -45,7 +45,7 @@ export class ClientsService {
         data: {
           name: data.name,
           companyId: companyId,
-          hierarchyCode,
+          code,
           accountType: 'ASSET',
           openingBalance: 0.0,
           currentBalance: 0.0,
@@ -82,7 +82,7 @@ export class ClientsService {
     const accountsReceivable = await this.prisma.account.findFirst({
       where: {
         companyId,
-        hierarchyCode: '1.1.3'
+        code: '1.1.3'
       },
     });
 
@@ -99,7 +99,7 @@ export class ClientsService {
         id: true,
         name: true,
         currentBalance: true,
-        hierarchyCode: true,
+        code: true,
         companyId: true,
       },
     });

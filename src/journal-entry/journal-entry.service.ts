@@ -214,21 +214,21 @@ export class JournalEntryService {
     }
 
     // Extract unique hierarchy codes
-    const hierarchyCodes = [
-      ...new Set(entries.map((entry) => entry.hierarchyCode).filter((code) => code)),
+    const codes = [
+      ...new Set(entries.map((entry) => entry.code).filter((code) => code)),
     ];
 
     // Fetch all accounts matching hierarchy codes and companyId in one query
     const accounts = await this.prisma.account.findMany({
       where: {
-        hierarchyCode: { in: hierarchyCodes },
+        code: { in: codes },
         companyId,
       },
     });
 
-    // Create a map of hierarchyCode -> accountId
+    // Create a map of code -> accountId
     const accountMap = accounts.reduce((map, account) => {
-      map[account.hierarchyCode] = account.id;
+      map[account.code] = account.id;
       return map;
     }, {} as Record<string, string>);
 
@@ -236,11 +236,11 @@ export class JournalEntryService {
 
     // Process each entry and map to accountId
     for (const entry of entries) {
-      const accountId = accountMap[entry.hierarchyCode];
+      const accountId = accountMap[entry.code];
 
       if (!accountId) {
         throw new BadRequestException(
-          `Account not found for hierarchyCode: ${entry.hierarchyCode} and companyId: ${companyId}`,
+          `Account not found for code: ${entry.code} and companyId: ${companyId}`,
         );
       }
 

@@ -1,18 +1,21 @@
 import { Body, Injectable, Post } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { generateHierarchyCode } from 'src/utilties/hierarchy.util';
+import { generateCode } from 'src/utilties/hierarchy.util';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
-  async createEmployee(data: { name: string }, companyId: string): Promise<any> {
+  async createEmployee(
+    data: { name: string },
+    companyId: string,
+  ): Promise<any> {
     console.log('Starting createEmployee function');
     const employeesLiability = await this.prisma.account.findFirst({
       where: {
         companyId: companyId,
 
-        hierarchyCode: '2.1.1',
+        code: '2.1.1',
       },
       select: { id: true },
     });
@@ -22,12 +25,12 @@ export class EmployeesService {
       console.error('EmployeesLiability account not found');
       throw new Error('EmployeesLiabilityaccount not found');
     }
-    const hierarchyCode = await generateHierarchyCode(
+    const code = await generateCode(
       this.prisma,
       employeesLiability.id,
-      companyId
+      companyId,
     );
-    console.log('Generated hierarchy code:', hierarchyCode);
+    console.log('Generated hierarchy code:', code);
 
     try {
       // Create the new account for the client
@@ -36,7 +39,7 @@ export class EmployeesService {
         data: {
           companyId: companyId,
           name: data.name,
-          hierarchyCode,
+          code,
           accountType: 'LIABILITY',
           openingBalance: 0.0,
           currentBalance: 0.0,
@@ -50,7 +53,7 @@ export class EmployeesService {
         data: {
           // accountId: newAccount.id,
           // displayName: data.name || null,
-          companyId: companyId
+          companyId: companyId,
         },
       });
       console.log('Employee Details:', employeeDetails);

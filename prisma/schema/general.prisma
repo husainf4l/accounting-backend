@@ -1,24 +1,26 @@
 model Account {
-  id              String         @id @default(uuid())
-  hierarchyCode   String         
-  name            String
-  companyId       String
-  accountType     AccountType
-  openingBalance  Float?         @default(0.0)
-  currentBalance  Float          @default(0.0)
-  parentAccountId String?
-  mainAccount     Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  parentAccount   Account?       @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
-  children        Account[]      @relation("AccountHierarchy")
-  GeneralLedger   GeneralLedger?
-  leases          Lease[]
-  transactions    Transaction[]
+  id                 String         @id @default(uuid())
+  code               String
+  name               String
+  nameAr             String?
+  companyId          String
+  accountType        AccountType
+  openingBalance     Float?         @default(0.0)
+  currentBalance     Float          @default(0.0)
+  parentAccountId    String?
+  mainAccount        Boolean        @default(false)
+  level              Int?
+  ifrcClassification String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  parentAccount      Account?       @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  children           Account[]      @relation("AccountHierarchy")
+  GeneralLedger      GeneralLedger?
+  transactions       Transaction[]
 
-  @@unique([hierarchyCode, companyId])
+  @@unique([code, companyId])
   @@index([companyId])
-  @@index([companyId, hierarchyCode])
+  @@index([companyId, code])
 }
 
 model BankDetails {
@@ -144,18 +146,6 @@ model Obligation {
   contract     Contract @relation(fields: [contractId], references: [id])
 }
 
-model Lease {
-  id             String   @id @default(uuid())
-  accountId      String
-  leaseLiability Float
-  rouAsset       Float
-  companyId      String
-  leaseTerm      Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  account        Account  @relation(fields: [accountId], references: [id])
-}
-
 model Salary {
   id          String   @id @default(uuid())
   employeeId  String
@@ -260,7 +250,7 @@ enum AccountType {
   EQUITY
   REVENUE
   EXPENSE
-  TRADEEXPENSES
+  CONTRA_ASSET
 }
 
 enum TaxType {

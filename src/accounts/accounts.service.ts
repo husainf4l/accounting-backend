@@ -117,7 +117,7 @@ export class AccountsService {
     const codeArray = Array.isArray(codes) ? codes : [codes];
 
     const accounts = await Promise.all(
-      codeArray.map((code) => this.findAccountByHierarchyCode(code, companyId)),
+      codeArray.map((code) => this.findAccountByCode(code, companyId)),
     );
 
     if (Array.isArray(codes)) {
@@ -129,15 +129,12 @@ export class AccountsService {
     return accounts[0];
   }
 
-  async getAccountsUnderCode(hierarchyCode: string, companyId: string) {
-    const mainAccount = await this.findAccountByHierarchyCode(
-      hierarchyCode,
-      companyId,
-    );
+  async getAccountsUnderCode(code: string, companyId: string) {
+    const mainAccount = await this.findAccountByCode(code, companyId);
 
     if (!mainAccount) {
       throw new Error(
-        `Main account with hierarchy code ${hierarchyCode} not found for company ID ${companyId}`,
+        `Main account with hierarchy code ${code} not found for company ID ${companyId}`,
       );
     }
 
@@ -155,14 +152,14 @@ export class AccountsService {
     });
   }
 
-  async findAccountByHierarchyCode(hierarchyCode: string, companyId: string) {
+  async findAccountByCode(code: string, companyId: string) {
     const account = await this.prisma.account.findFirst({
-      where: { hierarchyCode: hierarchyCode, companyId: companyId },
+      where: { code: code, companyId: companyId },
     });
 
     if (!account) {
       throw new Error(
-        `Account with hierarchy code ${hierarchyCode} and companyId: ${companyId} not found`,
+        `Account with hierarchy code ${code} and companyId: ${companyId} not found`,
       );
     }
 
@@ -191,16 +188,16 @@ export class AccountsService {
       throw new Error('Parent account ID is required for sub-accounts.');
     }
 
-    let hierarchyCode: string;
+    let code: string;
 
     if (mainAccount) {
       const maxMainAccount = await this.prisma.account.findFirst({
         where: { companyId, mainAccount: true },
-        orderBy: { hierarchyCode: 'desc' },
+        orderBy: { code: 'desc' },
       });
 
-      hierarchyCode = maxMainAccount
-        ? (parseInt(maxMainAccount.hierarchyCode || '0', 10) + 1).toString()
+      code = maxMainAccount
+        ? (parseInt(maxMainAccount.code || '0', 10) + 1).toString()
         : '1';
     } else {
       const parentAccount = await this.prisma.account.findUnique({
@@ -213,17 +210,16 @@ export class AccountsService {
 
       const maxSubAccount = await this.prisma.account.findFirst({
         where: { companyId, parentAccountId },
-        orderBy: { hierarchyCode: 'desc' },
+        orderBy: { code: 'desc' },
       });
 
       const subCode = maxSubAccount
         ? (
-            parseInt(maxSubAccount.hierarchyCode.split('.').pop() || '0', 10) +
-            1
+            parseInt(maxSubAccount.code.split('.').pop() || '0', 10) + 1
           ).toString()
         : '1';
 
-      hierarchyCode = `${parentAccount.hierarchyCode}.${subCode}`;
+      code = `${parentAccount.code}.${subCode}`;
     }
 
     const accountData: any = {
@@ -232,7 +228,7 @@ export class AccountsService {
       openingBalance,
       currentBalance: openingBalance,
       mainAccount,
-      hierarchyCode,
+      code,
       companyId,
       parentAccountId: mainAccount ? null : parentAccountId,
     };
@@ -244,14 +240,11 @@ export class AccountsService {
     return newAccount;
   }
 
-  async bulkCreate(createAccountDtos: CreateAccountDto[]) {
+  async bulkCreate(createAccountDtos: CreateAccountDto[], companyId: string) {
     // Store the results
     const results: any[] = [];
 
-    // Sort accounts by hierarchyCode length to ensure parents are created first
-    createAccountDtos.sort(
-      (a, b) => a.hierarchyCode.length - b.hierarchyCode.length,
-    );
+    createAccountDtos.sort((a, b) => a.code.length - b.code.length);
 
     // Use a transaction for atomicity
     await this.prisma.$transaction(async (prisma) => {
@@ -259,12 +252,12 @@ export class AccountsService {
         // Find or create parent account if parentAccountId is provided
         let parentAccount = null;
 
-        if (accountDto.parentAccountId) {
+        if (accountDto.parentCode) {
           parentAccount = await prisma.account.findUnique({
             where: {
-              hierarchyCode_companyId: {
-                hierarchyCode: accountDto.parentAccountId,
-                companyId: accountDto.companyId,
+              code_companyId: {
+                code: accountDto.parentCode,
+                companyId: companyId,
               },
             },
           });
@@ -272,7 +265,7 @@ export class AccountsService {
           if (!parentAccount) {
             // Throw an error if parentAccountId is invalid
             throw new Error(
-              `Parent account with hierarchyCode ${accountDto.parentAccountId} and companyId ${accountDto.companyId} does not exist.`,
+              `Parent account with Code ${accountDto.parentCode} and companyId ${companyId} does not exist.`,
             );
           }
         }
@@ -280,39 +273,17 @@ export class AccountsService {
         // Create the account
         const account = await prisma.account.create({
           data: {
-            hierarchyCode: accountDto.hierarchyCode,
-            companyId: accountDto.companyId,
-            name: accountDto.name,
-            accountType: accountDto.accountType,
+            code: accountDto.code,
             parentAccountId: parentAccount ? parentAccount.id : null,
-            openingBalance: accountDto.openingBalance || 0,
-            currentBalance: accountDto.currentBalance,
             mainAccount: accountDto.mainAccount,
+            name: accountDto.name,
+            nameAr: accountDto.nameAr,
+            level: accountDto.level,
+            accountType: accountDto.accountType,
+            companyId: companyId,
           },
         });
 
-        // Handle BankDetails creation if provided
-        if (accountDto.bankDetails) {
-          await prisma.bankDetails.create({
-            data: {
-              ...accountDto.bankDetails,
-              accountId: account.id,
-              companyId: account.companyId,
-            },
-          });
-        }
-
-        if (accountDto.customerDetails) {
-          await prisma.customer.create({
-            data: {
-              ...accountDto.customerDetails,
-              accountId: account.id,
-              companyId: account.companyId,
-            },
-          });
-        }
-
-        // Store the created account in results
         results.push(account);
       }
     });

@@ -37,7 +37,7 @@ export class GeneralLedgerService {
           },
         },
       },
-      orderBy: { hierarchyCode: 'asc' }, // Ensure hierarchy order
+      orderBy: { code: 'asc' }, // Ensure hierarchy order
     });
 
     console.log(`Fetched ${accounts.length} accounts with transactions`);
@@ -169,7 +169,7 @@ export class GeneralLedgerService {
         parentAccountId: true,
         openingBalance: true,
       },
-      orderBy: { hierarchyCode: 'asc' }, // Ensure proper hierarchy processing
+      orderBy: { code: 'asc' }, // Ensure proper hierarchy processing
     });
 
     // Step 2: Aggregate transactions in the database
@@ -298,7 +298,7 @@ export class GeneralLedgerService {
     const accounts = await this.prisma.account.findMany({
       where: { companyId },
       select: { id: true, parentAccountId: true, openingBalance: true },
-      orderBy: { hierarchyCode: 'desc' },
+      orderBy: { code: 'desc' },
     });
 
     const accountIds = accounts.map((account) => account.id);

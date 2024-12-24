@@ -3,7 +3,7 @@ import { IsString, IsNumber, IsOptional } from 'class-validator';
 export class CreateJournalDto {
 
     @IsString()
-    hierarchyCode: string;
+    code: string;
 
     @IsOptional()
     @IsNumber()

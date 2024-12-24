@@ -12,33 +12,33 @@ import { Type } from 'class-transformer';
 import { AccountType } from '@prisma/client';
 
 export class BankDetailsDto {
-    @IsString()
-    accountId: string;
-  
-    @IsString()
-    bankName: string;
-  
-    @IsString()
-    companyId: string;
-  
-    @IsString()
-    accountNumber: string;
-  
-    @IsOptional()
-    @IsString()
-    iban?: string;
-  
-    @IsOptional()
-    @IsString()
-    swiftCode?: string;
-  
-    @IsOptional()
-    @IsString()
-    branchName?: string;
-  
-    @IsBoolean()
-    isActive: boolean;
-  }
+  @IsString()
+  accountId: string;
+
+  @IsString()
+  bankName: string;
+
+  @IsString()
+  companyId: string;
+
+  @IsString()
+  accountNumber: string;
+
+  @IsOptional()
+  @IsString()
+  iban?: string;
+
+  @IsOptional()
+  @IsString()
+  swiftCode?: string;
+
+  @IsOptional()
+  @IsString()
+  branchName?: string;
+
+  @IsBoolean()
+  isActive: boolean;
+}
 
 export class CustomerDetailsDto {
   @IsString()
@@ -57,32 +57,36 @@ export class CustomerDetailsDto {
   address?: string;
 
   @IsString()
-  companyId :string
+  companyId: string;
 }
 
 export class CreateAccountDto {
   @IsString()
-  hierarchyCode: string;
+  code: string;
 
   @IsString()
   name: string;
 
   @IsString()
-  @IsEnum(AccountType, { message: 'accountType must be a valid AccountType enum value' })
-  accountType: AccountType;
+  @IsOptional()
+  nameAr: string;
 
+  @IsOptional()
+  level: number;
+
+  @IsString()
+  @IsEnum(AccountType, {
+    message: 'accountType must be a valid AccountType enum value',
+  })
+  accountType: AccountType;
 
   @IsOptional()
   @IsUUID()
-  parentAccountId?: string | null;
+  parentCode?: string | null;
 
   @IsOptional()
   @IsNumber()
   openingBalance?: number;
-
-
-  @IsString()
-  companyId: string;
 
   @IsNumber()
   currentBalance: number;
