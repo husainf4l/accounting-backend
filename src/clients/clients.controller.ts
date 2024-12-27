@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { AuthGuard } from '@nestjs/passport';
+import { CreateClientDto } from './dto/CreateClientDto';
 
 @Controller('clients')
 export class ClientsController {
@@ -43,4 +44,17 @@ export class ClientsController {
     const companyId = req.user.companyId;
     return this.clientsService.getClients(companyId);
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('bulk')
+  async bulkUploadClients(
+    @Req() req: any,
+    @Body('data') createClientDtos: CreateClientDto[],
+  ) {
+    const companyId = req.user.companyId;
+
+    return this.clientsService.bulkCreateClients(createClientDtos, companyId);
+  }
+
+
 }

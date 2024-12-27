@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateClientDto } from './dto/CreateClientDto';
 
 @Injectable()
 export class ClientsService {
@@ -129,4 +130,103 @@ export class ClientsService {
       },
     });
   }
+
+  async bulkCreateClients(createClientDtos: CreateClientDto[], companyId: string) {
+    const results: any[] = [];
+
+    await this.prisma.$transaction(async (prisma) => {
+      for (const clientDto of createClientDtos) {
+        // Validate duplicate clients only if taxId is provided
+        if (clientDto.taxId) {
+          const existingClient = await prisma.customer.findFirst({
+            where: {
+              taxId: clientDto.taxId,
+              companyId,
+            },
+          });
+
+          if (existingClient) {
+            throw new Error(
+              `Client with taxId ${clientDto.taxId} already exists for companyId ${companyId}.`,
+            );
+          }
+        }
+
+        // Create the client
+        const client = await prisma.customer.create({
+          data: {
+            name: clientDto.name,
+            nameAr: clientDto.nameAr || null,
+            email: clientDto.email || null,
+            phone: clientDto.phone || null,
+            address: clientDto.address || null,
+            taxId: clientDto.taxId || null,
+            openingBalance: clientDto.openingBalance || 0.0,
+            currentBalance: clientDto.openingBalance || 0.0,
+            companyId,
+          },
+        });
+
+        // Handle opening balance
+        if (clientDto.openingBalance && clientDto.openingBalance !== 0) {
+          const isDebit = clientDto.openingBalance > 0;
+          const absoluteBalance = Math.abs(clientDto.openingBalance);
+
+          // Retrieve Accounts Receivable and Opening Balance Equity accounts
+          const [accountsReceivable, openingBalanceEquity] = await Promise.all([
+            prisma.account.findFirst({
+              where: { companyId, code: '1.1.3' }, // Example code for Accounts Receivable
+            }),
+            prisma.account.findFirst({
+              where: { companyId, code: '3.2' }, // Example code for Opening Balance Equity
+            }),
+          ]);
+
+          if (!accountsReceivable || !openingBalanceEquity) {
+            throw new Error(
+              `Critical accounts missing: ${!accountsReceivable ? 'Accounts Receivable' : ''
+              } ${!openingBalanceEquity ? 'Opening Balance Equity' : ''
+              }. Ensure the accounts exist in the chart of accounts.`,
+            );
+          }
+
+          // Create a balanced journal entry
+          const journalEntry = await prisma.journalEntry.create({
+            data: {
+              companyId,
+              date: new Date(),
+              transactions: {
+                create: [
+                  {
+                    accountId: accountsReceivable.id, // Accounts Receivable
+                    customerId: client.id,
+                    debit: isDebit ? absoluteBalance : 0.0,
+                    credit: isDebit ? 0.0 : absoluteBalance,
+                    companyId,
+                    notes: `Opening balance journal for client ${clientDto.name} (${clientDto.taxId || 'N/A'}).`,
+                  },
+                  {
+                    accountId: openingBalanceEquity.id, // Opening Balance Equity
+                    debit: isDebit ? 0.0 : absoluteBalance,
+                    credit: isDebit ? absoluteBalance : 0.0,
+                    companyId,
+                    notes: `Offset for opening balance of client ${clientDto.name}.`,
+                  },
+                ],
+              },
+            },
+          });
+
+          console.log(`Journal entry created for client ${client.name}`, journalEntry);
+        }
+
+        results.push(client);
+      }
+    });
+
+    return results;
+  }
+
+
+
 }

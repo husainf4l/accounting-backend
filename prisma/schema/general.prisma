@@ -92,6 +92,7 @@ model Customer {
   Transaction    Transaction[]
   GeneralLedger  GeneralLedger[]
 
+  @@unique([taxId, companyId])
   @@index([companyId])
 }
 
