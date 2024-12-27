@@ -1,28 +1,26 @@
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
+  id           String        @id @default(uuid())
+  email        String        @unique
   password     String
   phoneNumber  String
-  userName     String    @unique
+  userName     String        @unique
   name         String
   fcmToken     String?
-  profileImage String    @default("https://firebasestorage.googleapis.com/v0/b/gixatco.firebasestorage.app/o/settings%2Fshared%2Fdownload.jpeg?alt=media&")
-  role         UserRole  @default(USER)
+  profileImage String        @default("https://firebasestorage.googleapis.com/v0/b/gixatco.firebasestorage.app/o/settings%2Fshared%2Fdownload.jpeg?alt=media&")
+  role         UserRole      @default(USER)
   companyId    String? // Active company ID
   tenantId     Int?
   position     String?
   department   String?
   hireDate     DateTime?
   salary       Float?
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  // Relationships
-  company   Company?      @relation("ActiveCompany", fields: [companyId], references: [id])
-  companies UserCompany[] @relation("UserCompanies") // Many-to-many relation via UserCompany
-  invoices  Invoice[]
-  receipts  Receipt[]
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  company      Company?      @relation("ActiveCompany", fields: [companyId], references: [id])
+  companies    UserCompany[] @relation("UserCompanies") // Many-to-many relation via UserCompany
+  invoices     Invoice[]
+  receipts     Receipt[]
 }
 
 model Company {

@@ -1,22 +1,22 @@
 model Account {
-  id                 String         @id @default(uuid())
+  id                 String          @id @default(uuid())
   code               String
   name               String
   nameAr             String?
   companyId          String
   accountType        AccountType
-  openingBalance     Float?         @default(0.0)
-  currentBalance     Float          @default(0.0)
+  openingBalance     Float?          @default(0.0)
+  currentBalance     Float           @default(0.0)
   parentAccountId    String?
-  mainAccount        Boolean        @default(false)
+  mainAccount        Boolean         @default(false)
   level              Int?
   ifrcClassification String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  parentAccount      Account?       @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
-  children           Account[]      @relation("AccountHierarchy")
-  GeneralLedger      GeneralLedger?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  parentAccount      Account?        @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  children           Account[]       @relation("AccountHierarchy")
   transactions       Transaction[]
+  GeneralLedger      GeneralLedger[]
 
   @@unique([code, companyId])
   @@index([companyId])
@@ -24,17 +24,18 @@ model Account {
 }
 
 model BankDetails {
-  id            String   @id @default(uuid())
-  accountId     String   @unique
+  id            String          @id @default(uuid())
+  accountId     String          @unique
   bankName      String
   companyId     String
   accountNumber String
   iban          String?
   swiftCode     String?
   branchName    String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  GeneralLedger GeneralLedger[]
 }
 
 model Transaction {
@@ -42,6 +43,8 @@ model Transaction {
   accountId      String
   journalEntryId String
   debit          Float?
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id])
   companyId      String
   credit         Float?
   currency       String       @default("JOD")
@@ -66,21 +69,28 @@ model JournalEntry {
 }
 
 model Customer {
-  id             String     @id @default(cuid())
-  identification String     @default("Unknown")
+  id             String          @id @default(cuid())
+  identification String          @default("Unknown")
   name           String
+  nameAr         String?
+  taxId          String?
+  openingBalance Float           @default(0.0)
+  currentBalance Float           @default(0.0)
   companyId      String
-  postalCode     String?
-  countryCode    String     @default("JO")
+  countryCode    String          @default("JO")
+  city           String?
   phone          String?
   email          String?
   address        String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime?  @updatedAt
-  accountId      String     @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime?       @updatedAt
+  deletedAt      DateTime?
+  accountId      String?
   contracts      Contract[]
   invoices       Invoice[]
   receipts       Receipt[]
+  Transaction    Transaction[]
+  GeneralLedger  GeneralLedger[]
 
   @@index([companyId])
 }
@@ -169,15 +179,49 @@ model Asset {
 }
 
 model GeneralLedger {
-  id        String   @id @default(uuid())
-  accountId String   @unique
-  balance   Float
-  companyId String
-  updatedAt DateTime @updatedAt
-  account   Account  @relation(fields: [accountId], references: [id])
+  id         String       @id @default(uuid())
+  accountId  String? // Link to an account
+  customerId String? // Link to a customer
+  supplierId String? // Link to a supplier
+  bankId     String? // Link to a bank
+  expenseId  String? // Link to an expense
+  debit      Float        @default(0.0)
+  credit     Float        @default(0.0)
+  balance    Float        @default(0.0) // Running balance
+  companyId  String
+  date       DateTime     @default(now())
+  notes      String?
+  updatedAt  DateTime     @updatedAt
+  account    Account?     @relation(fields: [accountId], references: [id])
+  customer   Customer?    @relation(fields: [customerId], references: [id])
+  supplier   Supplier?    @relation(fields: [supplierId], references: [id])
+  bank       BankDetails? @relation(fields: [bankId], references: [id])
+  expense    Expense?     @relation(fields: [expenseId], references: [id])
 
   @@index([companyId])
-  @@index([companyId, accountId])
+  @@index([accountId])
+  @@index([customerId])
+}
+
+model Supplier {
+  id            String          @id @default(uuid())
+  name          String
+  companyId     String
+  contact       String? // Optional contact info
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  GeneralLedger GeneralLedger[] // Relation to General Ledger
+}
+
+model Expense {
+  id            String          @id @default(uuid())
+  description   String
+  amount        Float
+  date          DateTime        @default(now())
+  companyId     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  GeneralLedger GeneralLedger[] // Relation to General Ledger
 }
 
 model Product {

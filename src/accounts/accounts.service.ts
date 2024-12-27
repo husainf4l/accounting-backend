@@ -10,7 +10,7 @@ export class AccountsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly generalLedgerService: GeneralLedgerService,
-  ) {}
+  ) { }
 
   async getAccountStatement(
     accountId: string,
@@ -170,69 +170,63 @@ export class AccountsService {
     companyId: string,
     data: {
       name: string;
+      nameAr?: string;
       accountType: $Enums.AccountType;
       openingBalance?: number;
-      parentAccountId?: string | null;
-      mainAccount: boolean;
+      parentAccountId: string; // Required as all accounts must have a parent
+      level?: number;
+      ifrcClassification?: string | null;
     },
   ) {
     const {
       name,
+      nameAr = null,
       accountType,
       openingBalance = 0,
       parentAccountId,
-      mainAccount,
+      level = null,
+      ifrcClassification = null,
     } = data;
 
-    if (!mainAccount && !parentAccountId) {
-      throw new Error('Parent account ID is required for sub-accounts.');
+    // Ensure parent account exists
+    const parentAccount = await this.prisma.account.findUnique({
+      where: { id: parentAccountId },
+    });
+
+    if (!parentAccount) {
+      throw new Error(`Parent account with ID ${parentAccountId} not found`);
     }
 
-    let code: string;
+    // Generate account code dynamically
+    const maxSubAccount = await this.prisma.account.findFirst({
+      where: { companyId, parentAccountId },
+      orderBy: { code: 'desc' },
+    });
 
-    if (mainAccount) {
-      const maxMainAccount = await this.prisma.account.findFirst({
-        where: { companyId, mainAccount: true },
-        orderBy: { code: 'desc' },
-      });
+    const subCode = maxSubAccount
+      ? (
+        parseInt(maxSubAccount.code.split('.').pop() || '0', 10) + 1
+      ).toString()
+      : '1';
 
-      code = maxMainAccount
-        ? (parseInt(maxMainAccount.code || '0', 10) + 1).toString()
-        : '1';
-    } else {
-      const parentAccount = await this.prisma.account.findUnique({
-        where: { id: parentAccountId },
-      });
+    const code = `${parentAccount.code}.${subCode}`;
 
-      if (!parentAccount) {
-        throw new Error(`Parent account with ID ${parentAccountId} not found`);
-      }
-
-      const maxSubAccount = await this.prisma.account.findFirst({
-        where: { companyId, parentAccountId },
-        orderBy: { code: 'desc' },
-      });
-
-      const subCode = maxSubAccount
-        ? (
-            parseInt(maxSubAccount.code.split('.').pop() || '0', 10) + 1
-          ).toString()
-        : '1';
-
-      code = `${parentAccount.code}.${subCode}`;
-    }
-
+    // Prepare account data
     const accountData: any = {
       name,
+      nameAr,
       accountType,
       openingBalance,
       currentBalance: openingBalance,
-      mainAccount,
+      mainAccount: false, // Sub-accounts cannot be main accounts
       code,
       companyId,
-      parentAccountId: mainAccount ? null : parentAccountId,
+      parentAccountId,
+      level: parentAccount.level !== null ? parentAccount.level + 1 : null, // Increment level from parent
+      ifrcClassification,
     };
 
+    // Create account
     const newAccount = await this.prisma.account.create({
       data: accountData,
     });
@@ -240,13 +234,13 @@ export class AccountsService {
     return newAccount;
   }
 
+
+
   async bulkCreate(createAccountDtos: CreateAccountDto[], companyId: string) {
-    // Store the results
     const results: any[] = [];
 
     createAccountDtos.sort((a, b) => a.code.length - b.code.length);
 
-    // Use a transaction for atomicity
     await this.prisma.$transaction(async (prisma) => {
       for (const accountDto of createAccountDtos) {
         // Find or create parent account if parentAccountId is provided

@@ -6,7 +6,7 @@ import { BackupService } from './backup.service';
 
 @Controller('backup')
 export class BackupController {
-  constructor(private readonly backupService: BackupService) {}
+  constructor(private readonly backupService: BackupService) { }
 
   @Get()
   async triggerBackup(): Promise<string> {

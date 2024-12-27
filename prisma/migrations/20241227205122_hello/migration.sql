@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Customer" ADD COLUMN     "currentBalance" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+ADD COLUMN     "openingBalance" DOUBLE PRECISION NOT NULL DEFAULT 0.0;

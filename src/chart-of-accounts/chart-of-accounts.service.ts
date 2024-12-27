@@ -8,38 +8,38 @@ export class ChartOfAccountsService {
   constructor(
     private prisma: PrismaService,
     private generalLedger: GeneralLedgerService,
-  ) {}
+  ) { }
 
-  // Get all accounts
-  async getAllAccounts22(companyId: string): Promise<any[]> {
-    await this.generalLedger.updateGeneralLedger(companyId);
-    return this.prisma.account.findMany({
-      where: { companyId: companyId },
-      select: {
-        id: true,
-        name: true,
-        accountType: true,
-        code: true,
-        currentBalance: true,
-        mainAccount: true,
-        openingBalance: true,
-        transactions: true,
-      },
-      orderBy: [
-        {
-          code: 'asc',
-        },
-        {
-          name: 'asc',
-        },
-      ],
-    });
-  }
+  // // Get all accounts
+  // async getAllAccounts22(companyId: string): Promise<any[]> {
+  //   await this.generalLedger.updateGeneralLedger(companyId);
+  //   return this.prisma.account.findMany({
+  //     where: { companyId: companyId },
+  //     select: {
+  //       id: true,
+  //       name: true,
+  //       accountType: true,
+  //       code: true,
+  //       currentBalance: true,
+  //       mainAccount: true,
+  //       openingBalance: true,
+  //       transactions: true,
+  //     },
+  //     orderBy: [
+  //       {
+  //         code: 'asc',
+  //       },
+  //       {
+  //         name: 'asc',
+  //       },
+  //     ],
+  //   });
+  // }
 
-  async reconsole(companyId: string): Promise<any[]> {
-    await this.generalLedger.reconcileGeneralLedger(companyId);
-    return this.getAllAccounts(companyId);
-  }
+  // async reconsole(companyId: string): Promise<any[]> {
+  //   await this.generalLedger.reconcileGeneralLedger(companyId);
+  //   return this.getAllAccounts(companyId);
+  // }
 
   async getAllAccounts(companyId: string): Promise<any[]> {
     const accounts = await this.prisma.account.findMany({
@@ -446,13 +446,13 @@ export class ChartOfAccountsService {
           mainAccount: account.mainAccount,
           parentAccountId: parentAccount
             ? (
-                await this.prisma.account.findFirst({
-                  where: {
-                    companyId: companyId,
-                    code: parentAccount.code,
-                  },
-                })
-              )?.id
+              await this.prisma.account.findFirst({
+                where: {
+                  companyId: companyId,
+                  code: parentAccount.code,
+                },
+              })
+            )?.id
             : null,
           currentBalance: 0,
         },

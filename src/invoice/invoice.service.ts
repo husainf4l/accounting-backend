@@ -21,7 +21,7 @@ export class InvoiceService {
 
   private async getNextInvoiceNumber(companyId: string) {
     const lastInvoice = await this.prisma.invoice.findFirst({
-      where: { companyId: companyId },
+      where: { companyId },
       orderBy: { number: 'desc' },
       select: { number: true },
     });
@@ -30,57 +30,49 @@ export class InvoiceService {
   }
 
   async getInvoiceData(companyId: string) {
-
     const [clients, accountManagers, products, number, cashAccounts] =
       await Promise.all([
         this.clientsService.getClients(companyId),
         this.employeeService.getAccountManagers(companyId),
         this.productsService.getProducts(companyId),
         this.getNextInvoiceNumber(companyId),
-        this.accountsService.getAccountsUnderCode('1.1.1', companyId),
+        this.accountsService.getAccountsUnderCode('1.1.1', companyId), // Cash accounts
       ]);
 
     return { clients, products, accountManagers, number, cashAccounts };
   }
 
   async createInvoice(data: any, companyId: string) {
-    console.log('Data on post :', data);
-
     const customer = await this.clientsService.ensureCustomerExists(
       companyId,
       data.clientId,
       data.clientName,
     );
 
+    // Fetch critical accounts
     const criticalAccounts = await this.accountsService.getCriticalAccounts(companyId, [
-      '4.1',
-      '2.1.2',
-      '5.5',
-      '1.1.4',
+      '4.1', // Sales Revenue
+      '2.1.2', // Sales Tax
+      '5.5', // COGS
+      '1.1.4', // Inventory
     ]);
+
     const salesRevenue = criticalAccounts['4.1'];
     const salesTax = criticalAccounts['2.1.2'];
     const cogs = criticalAccounts['5.5'];
     const inventoryAccount = criticalAccounts['1.1.4'];
 
-    console.log('Data after some transactions 0:', data);
+    // Validate and update product stock
+    const totalCOGS = await this.productsService.validateAndUpdateStock(data.items);
 
-    const totalCOGS = await this.productsService.validateAndUpdateStock(
-      data.items,
+    // Create a journal entry for the invoice
+    await this.journalService.createInvoiceJournalEntry(
+      data,
+      { salesRevenue, salesTax, cogs, inventoryAccount, totalCOGS },
+      companyId,
     );
-    console.log('Data after some transactions 1:', data);
 
-    await this.journalService.createInvoiceJournalEntry(data, {
-      salesRevenue,
-      salesTax,
-      cogs,
-      inventoryAccount,
-      totalCOGS,
-
-    }, companyId);
-
-    console.log('Data after some transactions :', data);
-
+    // Create the invoice
     const invoice = await this.prisma.invoice.create({
       data: {
         number: data.number,
@@ -103,7 +95,7 @@ export class InvoiceService {
         taxExclusiveAmount: data.taxExclusiveAmount || 0.0,
         company: {
           connect: {
-            id: companyId, // Fixing relation for companyId
+            id: companyId,
           },
         },
         taxInclusiveAmount: data.taxInclusiveAmount || 0.0,
@@ -114,9 +106,9 @@ export class InvoiceService {
           create: data.items.map((item: any) => ({
             Product: item.productId
               ? { connect: { id: item.productId } }
-              : undefined, // Use connect for related Product
+              : undefined,
             name: item.name || 'Default Item Name',
-            companyId: companyId,
+            companyId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             discountAmount: item.discount || 0.0,
@@ -134,10 +126,8 @@ export class InvoiceService {
       },
     });
 
-
-    console.log(invoice);
-
-    // this.xmlReceiverService.sendInvoiceTojofotara(invoice);
+    // Send invoice to XML receiver (e.g., Jofotara)
+    this.xmlReceiverService.sendInvoiceTojofotara(invoice);
 
     return invoice;
   }
@@ -160,34 +150,21 @@ export class InvoiceService {
   }
 
   async getInvoicesDetails(companyId: string) {
-    // Fetch all invoices
-    const invoices = await this.prisma.invoice.findMany({
-      where: { companyId: companyId },
+    return this.prisma.invoice.findMany({
+      where: { companyId },
       include: {
         customer: true,
         employee: true,
         items: true,
       },
     });
-
-    return invoices; // Return the invoices with customer details added
   }
 
-
-
   async createPurchaseInvoice(data: any, companyId: string) {
-    // const supplier = await this.prisma.supplier.findUnique({
-    //   where: { id: data.supplierId },
-    // });
-
-    // if (!supplier) {
-    //   throw new Error('Supplier does not exist.');
-    // }
-
     // Fetch critical accounts
     const criticalAccounts = await this.accountsService.getCriticalAccounts(companyId, [
       '2.1.1', // Accounts Payable
-      '5.1',   // Purchase Expense
+      '5.1', // Purchase Expense
       '1.1.4', // Inventory
       '2.1.2', // Purchase Tax
     ]);
@@ -197,25 +174,11 @@ export class InvoiceService {
     const inventoryAccount = criticalAccounts['1.1.4'];
     const purchaseTax = criticalAccounts['2.1.2'];
 
-    // Update inventory and calculate total
+    // Update inventory and calculate total cost
     let totalCost = 0;
     await Promise.all(
       data.items.map(async (item: any) => {
-        const product = await this.prisma.product.findUnique({
-          where: { id: item.productId },
-        });
-
-        if (!product) {
-          throw new Error(`Product with ID ${item.productId} not found`);
-        }
-
-        await this.prisma.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: product.stock + item.quantity,
-          },
-        });
-
+        const product = await this.productsService.validateAndUpdateStock(item);
         totalCost += item.unitPrice * item.quantity;
       }),
     );
@@ -270,7 +233,8 @@ export class InvoiceService {
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             discountAmount: item.discountAmount || 0.0,
-            lineExtensionAmount: item.quantity * item.unitPrice - (item.discountAmount || 0.0),
+            lineExtensionAmount:
+              item.quantity * item.unitPrice - (item.discountAmount || 0.0),
             taxAmount: item.taxAmount,
             taxCategory: item.taxCategory || 'S',
             taxPercent: item.taxPercent || 16.0,
@@ -284,8 +248,7 @@ export class InvoiceService {
     const purchaseInvoice = await this.prisma.purchaseInvoice.findUnique({
       where: { id: purchaseInvoiceId },
       include: {
-        // Supplier: true, // Include supplier details
-        items: true, // Include purchased items
+        items: true,
       },
     });
 
@@ -296,10 +259,9 @@ export class InvoiceService {
     return purchaseInvoice;
   }
 
-
   private async getNextPurchaseNumber(companyId: string) {
     const lastInvoice = await this.prisma.purchaseInvoice.findFirst({
-      where: { companyId: companyId },
+      where: { companyId },
       orderBy: { number: 'desc' },
       select: { number: true },
     });
@@ -308,17 +270,12 @@ export class InvoiceService {
   }
 
   async getPurchaseData(companyId: string) {
-
-    const [accountManagers, products, number] =
-      await Promise.all([
-        // this.clientsService.getClients(companyId),
-        this.employeeService.getAccountManagers(companyId),
-        this.productsService.getProducts(companyId),
-        this.getNextPurchaseNumber(companyId),
-      ]);
+    const [accountManagers, products, number] = await Promise.all([
+      this.employeeService.getAccountManagers(companyId),
+      this.productsService.getProducts(companyId),
+      this.getNextPurchaseNumber(companyId),
+    ]);
 
     return { products, accountManagers, number };
   }
-
-
 }

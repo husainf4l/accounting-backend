@@ -14,7 +14,7 @@ export class ReceiptService {
     private readonly employeeService: EmployeesService,
     private readonly accountsService: AccountsService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   async getReceiptData(companyId: string) {
     const [
@@ -62,7 +62,7 @@ export class ReceiptService {
     console.log(createReceiptDto);
 
     const customer = await this.prisma.customer.findUnique({
-      where: { accountId: clientId },
+      where: { id: clientId },
       select: { id: true },
     });
 

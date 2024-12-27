@@ -5,111 +5,123 @@ import { endOfDay } from 'date-fns';
 
 @Injectable()
 export class FinancialService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  async getCategoryDetails(
+  /**
+   * Fetch aggregate details for a given set of categories within a date range.
+   */
+  private async fetchCategoryAggregates(
     companyId: string,
     categories: AccountType[],
     startDate: Date,
     endDate: Date,
   ) {
-    const details = [];
-    let totalNetBalance = 0;
-
-    for (const category of categories) {
-      const { _sum: debitSum } = await this.prisma.transaction.aggregate({
-        where: {
-          companyId: companyId,
-          account: { accountType: category },
-          journalEntry: {
-            date: {
-              gte: startDate,
-              lte: endDate,
-            },
+    const debitCreditSums = await this.prisma.transaction.groupBy({
+      by: ['accountId'],
+      where: {
+        companyId,
+        account: { accountType: { in: categories } },
+        journalEntry: {
+          date: {
+            gte: startDate,
+            lte: endOfDay(endDate),
           },
         },
-        _sum: { debit: true },
-      });
+      },
+      _sum: {
+        debit: true,
+        credit: true,
+      },
+    });
 
-      const { _sum: creditSum } = await this.prisma.transaction.aggregate({
-        where: {
-          companyId: companyId,
-          account: { accountType: category },
-          journalEntry: {
-            date: {
-              gte: startDate,
-              lte: endDate,
-            },
-          },
-        },
-        _sum: { credit: true },
-      });
+    const totalDebit = debitCreditSums.reduce(
+      (sum, entry) => sum + (entry._sum.debit || 0),
+      0,
+    );
+    const totalCredit = debitCreditSums.reduce(
+      (sum, entry) => sum + (entry._sum.credit || 0),
+      0,
+    );
 
-      const totalDebit = debitSum.debit || 0;
-      const totalCredit = creditSum.credit || 0;
-      const netBalance = totalCredit - totalDebit;
+    const details = debitCreditSums.map((entry) => {
+      const accountNetBalance =
+        (entry._sum.credit || 0) - (entry._sum.debit || 0);
+      return {
+        accountId: entry.accountId,
+        totalDebit: entry._sum.debit || 0,
+        totalCredit: entry._sum.credit || 0,
+        netBalance: accountNetBalance,
+      };
+    });
 
-      details.push({
-        category,
-        totalDebit,
-        totalCredit,
-        netBalance:
-          category === AccountType.REVENUE ? netBalance : Math.abs(netBalance),
-      });
-
-      totalNetBalance += netBalance;
-    }
-
-    return { details, totalNetBalance };
+    return {
+      details,
+      totalDebit,
+      totalCredit,
+      totalNetBalance: totalCredit - totalDebit,
+    };
   }
 
+  /**
+   * Fetch category details and summarize for income statement sections.
+   */
+  private async getCategoryDetails(
+    companyId: string,
+    categories: AccountType[],
+    startDate: Date,
+    endDate: Date,
+    positiveBalance = false,
+  ) {
+    const aggregates = await this.fetchCategoryAggregates(
+      companyId,
+      categories,
+      startDate,
+      endDate,
+    );
+
+    const netBalance = positiveBalance
+      ? Math.abs(aggregates.totalNetBalance)
+      : aggregates.totalNetBalance;
+
+    return {
+      ...aggregates,
+      totalNetBalance: netBalance,
+    };
+  }
+
+  /**
+   * Generate an income statement for a given company and date range.
+   */
   async getIncomeStatement(companyId: string, startDate: Date, endDate: Date) {
-    const adjustedEndDate = endOfDay(endDate);
     const revenueCategories = [AccountType.REVENUE];
-    const cogsCategories = [AccountType.EXPENSE];
-    const operatingExpenseCategories = [AccountType.EXPENSE];
-    const nonOperatingCategories = [AccountType.EXPENSE];
+    const cogsCategories = [AccountType.EXPENSE]; // Adjust to only COGS accounts if needed
+    const operatingExpenseCategories = [AccountType.EXPENSE]; // Adjust to only operating accounts if needed
+    const nonOperatingCategories = [AccountType.EXPENSE]; // Adjust for non-operating accounts if needed
 
-    // Fetch details for each section
-    const revenueDetails = await this.getCategoryDetails(
-      companyId,
-      revenueCategories,
-      startDate,
-      adjustedEndDate,
-    );
-    const cogsDetails = await this.getCategoryDetails(
-      companyId,
-      cogsCategories,
-      startDate,
-      adjustedEndDate,
-    );
-    const operatingExpensesDetails = await this.getCategoryDetails(
-      companyId,
-      operatingExpenseCategories,
-      startDate,
-      adjustedEndDate,
-    );
-    const nonOperatingDetails = await this.getCategoryDetails(
-      companyId,
-      nonOperatingCategories,
-      startDate,
-      adjustedEndDate,
-    );
+    const [revenueDetails, cogsDetails, operatingExpensesDetails, nonOperatingDetails] =
+      await Promise.all([
+        this.getCategoryDetails(companyId, revenueCategories, startDate, endDate),
+        this.getCategoryDetails(companyId, cogsCategories, startDate, endDate, true),
+        this.getCategoryDetails(
+          companyId,
+          operatingExpenseCategories,
+          startDate,
+          endDate,
+          true,
+        ),
+        this.getCategoryDetails(companyId, nonOperatingCategories, startDate, endDate),
+      ]);
 
-    // Adjust values for calculations
     const totalRevenue = revenueDetails.totalNetBalance;
-    const totalCOGS = Math.abs(cogsDetails.totalNetBalance); // Ensure COGS is positive
+    const totalCOGS = cogsDetails.totalNetBalance;
     const grossProfit = totalRevenue - totalCOGS;
 
-    const totalOperatingExpenses = Math.abs(
-      operatingExpensesDetails.totalNetBalance,
-    );
+    const totalOperatingExpenses = operatingExpensesDetails.totalNetBalance;
     const operatingProfit = grossProfit - totalOperatingExpenses;
 
     const totalNonOperating = nonOperatingDetails.totalNetBalance;
     const netProfitOrLoss = operatingProfit + totalNonOperating;
 
-    // Return a detailed income statement
     return {
       totalRevenue,
       totalCOGS,
