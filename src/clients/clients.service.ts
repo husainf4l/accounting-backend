@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateClientDto } from './dto/CreateClientDto';
 
@@ -134,9 +134,26 @@ export class ClientsService {
   async bulkCreateClients(createClientDtos: CreateClientDto[], companyId: string) {
     const results: any[] = [];
 
+    // Retrieve critical accounts outside the loop
+    const [accountsReceivable, openingBalanceEquity] = await Promise.all([
+      this.prisma.account.findFirst({
+        where: { companyId, code: '1.1.3' },
+      }),
+      this.prisma.account.findFirst({
+        where: { companyId, code: '3.2' },
+      }),
+    ]);
+
+    if (!accountsReceivable || !openingBalanceEquity) {
+      throw new Error(
+        `Critical accounts missing: ${!accountsReceivable ? 'Accounts Receivable' : ''} ${!openingBalanceEquity ? 'Opening Balance Equity' : ''
+        }. Ensure the accounts exist in the chart of accounts.`,
+      );
+    }
+
     await this.prisma.$transaction(async (prisma) => {
       for (const clientDto of createClientDtos) {
-        // Validate duplicate clients only if taxId is provided
+        // Validate duplicate clients if taxId exists
         if (clientDto.taxId) {
           const existingClient = await prisma.customer.findFirst({
             where: {
@@ -172,24 +189,6 @@ export class ClientsService {
           const isDebit = clientDto.openingBalance > 0;
           const absoluteBalance = Math.abs(clientDto.openingBalance);
 
-          // Retrieve Accounts Receivable and Opening Balance Equity accounts
-          const [accountsReceivable, openingBalanceEquity] = await Promise.all([
-            prisma.account.findFirst({
-              where: { companyId, code: '1.1.3' }, // Example code for Accounts Receivable
-            }),
-            prisma.account.findFirst({
-              where: { companyId, code: '3.2' }, // Example code for Opening Balance Equity
-            }),
-          ]);
-
-          if (!accountsReceivable || !openingBalanceEquity) {
-            throw new Error(
-              `Critical accounts missing: ${!accountsReceivable ? 'Accounts Receivable' : ''
-              } ${!openingBalanceEquity ? 'Opening Balance Equity' : ''
-              }. Ensure the accounts exist in the chart of accounts.`,
-            );
-          }
-
           // Create a balanced journal entry
           const journalEntry = await prisma.journalEntry.create({
             data: {
@@ -198,7 +197,7 @@ export class ClientsService {
               transactions: {
                 create: [
                   {
-                    accountId: accountsReceivable.id, // Accounts Receivable
+                    accountId: accountsReceivable.id,
                     customerId: client.id,
                     debit: isDebit ? absoluteBalance : 0.0,
                     credit: isDebit ? 0.0 : absoluteBalance,
@@ -206,7 +205,7 @@ export class ClientsService {
                     notes: `Opening balance journal for client ${clientDto.name} (${clientDto.taxId || 'N/A'}).`,
                   },
                   {
-                    accountId: openingBalanceEquity.id, // Opening Balance Equity
+                    accountId: openingBalanceEquity.id,
                     debit: isDebit ? 0.0 : absoluteBalance,
                     credit: isDebit ? absoluteBalance : 0.0,
                     companyId,
@@ -224,8 +223,70 @@ export class ClientsService {
       }
     });
 
-    return results;
+    return {
+      success: results,
+      message: `${results.length} clients successfully created.`,
+    };
   }
+
+
+  async getClientAccountStatement(clientId: string, companyId: string): Promise<any[]> {
+    const transactions = await this.prisma.generalLedger.findMany({
+      where: { customerId: clientId, companyId },
+      orderBy: { date: 'asc' }, // Sort by date
+      include: {
+        account: true,
+      },
+    });
+
+    let runningBalance = 0;
+
+    // Map transactions to include running balance
+    return transactions.map((transaction) => {
+      runningBalance += transaction.debit - transaction.credit;
+      return {
+        date: transaction.date,
+        description: transaction.notes || 'No description',
+        debit: transaction.debit,
+        credit: transaction.credit,
+        runningBalance: runningBalance,
+      };
+    });
+  }
+
+
+  async getClientDetails(clientId: string, companyId: string): Promise<any> {
+    // Fetch the client details from the database
+    const client = await this.prisma.customer.findFirst({
+      where: { id: clientId, companyId },
+      include: {
+        invoices: true, // Include all related invoices
+        Transaction: true, // Include all related transactions
+        GeneralLedger: true, // Include all related general ledger entries
+      },
+    });
+
+    if (!client) {
+      throw new NotFoundException(`Client with ID ${clientId} not found.`);
+    }
+
+    // Calculate the client's current balance
+    const totalDebit = client.Transaction.reduce(
+      (sum, transaction) => sum + transaction.debit,
+      0,
+    );
+    const totalCredit = client.Transaction.reduce(
+      (sum, transaction) => sum + transaction.credit,
+      0,
+    );
+    const currentBalance = totalDebit - totalCredit;
+
+    return {
+      ...client,
+      currentBalance, // Add calculated balance to the response
+    };
+  }
+
 
 
 
