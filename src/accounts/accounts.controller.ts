@@ -15,7 +15,7 @@ import { CreateAccountDto } from './dto/CreateAccountDto';
 
 @Controller('accounts')
 export class AccountsController {
-  constructor(private readonly accountsService: AccountsService) {}
+  constructor(private readonly accountsService: AccountsService) { }
 
   @UseGuards(AuthGuard('jwt'))
   @Get(':accountId/statement')
@@ -72,5 +72,14 @@ export class AccountsController {
     const companyId = req.user.companyId;
 
     return this.accountsService.delete(companyId, accountId);
+  }
+
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('all-accounts')
+  async getAllAccounts(@Req() req: any) {
+    const companyId = req.user.companyId;
+
+    return this.accountsService.getAllAccounts(companyId);
   }
 }

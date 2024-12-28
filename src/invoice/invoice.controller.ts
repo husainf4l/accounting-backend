@@ -43,17 +43,6 @@ export class InvoiceController {
     }
 
 
-    @Post('purchase')
-    async createPurchase(@Body() data: any, @Req() req: any) {
-        const companyId = req.user.companyId;
-        return this.invoiceService.createPurchaseInvoice(data, companyId);
-    }
-
-    @Get('purchase/:id')
-    async getPurchaseDetails(@Param('id') id: string) {
-        return this.invoiceService.getPurchaseInvoiceDetails(id);
-    }
-
 
 
 
@@ -72,12 +61,5 @@ export class InvoiceController {
         }
     }
 
-    @UseGuards(AuthGuard('jwt'))
-    @Get('purchase-data')
-    async getPurchaseData(@Req() req: any) {
-        const companyId = req.user.companyId;
-        console.log('Company ID:', companyId);
 
-        return this.invoiceService.getPurchaseData(companyId);
-    }
 }

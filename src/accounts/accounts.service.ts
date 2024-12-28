@@ -28,75 +28,72 @@ export class AccountsService {
 
     // Fetch account details
     const accountDetails = await this.prisma.account.findUnique({
-      where: { id: accountId, companyId: companyId },
+      where: { id: accountId, companyId },
     });
 
     if (!accountDetails) {
       throw new Error(`Account with ID ${accountId} not found`);
     }
 
-    // Base opening balance
+    // Calculate opening balance
     let openingBalance = accountDetails.openingBalance || 0;
 
-    // Calculate opening balance if a startDate is provided
     if (startDateISO) {
-      const priorTransactions = await this.prisma.transaction.findMany({
+      const priorEntries = await this.prisma.generalLedger.findMany({
         where: {
           accountId,
-          createdAt: { lt: new Date(startDateISO) }, // Transactions before the startDate
+          date: { lt: new Date(startDateISO) }, // Entries before the start date
+          companyId,
         },
       });
 
-      openingBalance += priorTransactions.reduce(
-        (balance, transaction) =>
-          balance + (transaction.debit || 0) - (transaction.credit || 0),
+      openingBalance += priorEntries.reduce(
+        (balance, entry) =>
+          balance + (entry.debit || 0) - (entry.credit || 0),
         0,
       );
     }
 
-    // Fetch transactions within the specified date range
-    const transactionFilters: any = { accountId };
-    if (startDateISO)
-      transactionFilters.createdAt = { gte: new Date(startDateISO) };
+    // Fetch ledger entries within the date range
+    const ledgerFilters: any = { accountId, companyId };
+    if (startDateISO) ledgerFilters.date = { gte: new Date(startDateISO) };
     if (endDateISO)
-      transactionFilters.createdAt = {
-        ...transactionFilters.createdAt,
+      ledgerFilters.date = {
+        ...ledgerFilters.date,
         lte: new Date(endDateISO),
       };
 
-    const transactions = await this.prisma.transaction.findMany({
-      where: transactionFilters,
-      include: { journalEntry: true },
-      orderBy: { createdAt: 'asc' },
+    const ledgerEntries = await this.prisma.generalLedger.findMany({
+      where: ledgerFilters,
+      orderBy: { date: 'asc' },
       skip: offset,
       take: limit,
     });
 
-    // Count total transactions for pagination
-    const totalTransactions = await this.prisma.transaction.count({
-      where: transactionFilters,
+    // Count total ledger entries for pagination
+    const totalEntries = await this.prisma.generalLedger.count({
+      where: ledgerFilters,
     });
 
-    const totalPages = Math.ceil(totalTransactions / limit);
+    const totalPages = Math.ceil(totalEntries / limit);
 
-    // Calculate running balance for transactions
+    // Calculate running balance for ledger entries
     let runningBalance = openingBalance;
-    const transactionsWithBalance = transactions.map((transaction) => {
-      const { debit, credit } = transaction;
-      runningBalance += debit || 0;
-      runningBalance -= credit || 0;
-      return { ...transaction, runningBalance };
+    const entriesWithBalance = ledgerEntries.map((entry) => {
+      runningBalance += entry.debit || 0;
+      runningBalance -= entry.credit || 0;
+      return { ...entry, runningBalance };
     });
 
-    // Construct the response
+    // Construct response
     const response = {
       accountDetails: {
         ...accountDetails,
         openingBalance,
       },
-      transactions: transactionsWithBalance,
+      transactions: entriesWithBalance,
       pagination: {
-        totalRecords: totalTransactions,
+        totalRecords: totalEntries,
         currentPage: page,
         totalPages,
       },
@@ -105,13 +102,14 @@ export class AccountsService {
         endDate: endDate || null,
       },
       message:
-        totalTransactions === 0
+        totalEntries === 0
           ? 'No transactions found for the given account and date range.'
           : null,
     };
 
     return response;
   }
+
 
   async getCriticalAccounts(companyId: string, codes: string | string[] = []) {
     const codeArray = Array.isArray(codes) ? codes : [codes];
@@ -334,5 +332,12 @@ export class AccountsService {
         })
       )?.parentAccountId;
     }
+  }
+
+
+  async getAllAccounts(companyId: string) {
+    return this.prisma.account.findMany(
+      { where: { companyId: companyId } }
+    )
   }
 }

@@ -17,6 +17,7 @@ model Account {
   children           Account[]       @relation("AccountHierarchy")
   transactions       Transaction[]
   GeneralLedger      GeneralLedger[]
+  LinkedAccount      LinkedAccount[]
 
   @@unique([code, companyId])
   @@index([companyId])
@@ -329,4 +330,20 @@ model InventoryMovement {
 enum MovementType {
   IN
   OUT
+}
+
+model LinkedAccount {
+  id          String   @id @default(uuid())
+  companyId   String // Link to the company
+  role        String // Example: "Cash Account", "Main Cash Account", "Trade Expense"
+  accountId   String // Linked account ID
+  description String? // Optional description for the link
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@unique([companyId, role]) // Each role should be unique per company
 }

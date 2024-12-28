@@ -26,6 +26,8 @@ import { XmlReceiverModule } from './xml-receiver/xml-receiver.module';
 import { SettingsModule } from './settings/settings.module';
 import { GdprModule } from './gdpr/gdpr.module';
 import { FinancialModule } from './financial/financial.module';
+import { PurchasesModule } from './purchases/purchases.module';
+import { LinkingAccountsModule } from './linking-accounts/linking-accounts.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { FinancialModule } from './financial/financial.module';
     SettingsModule,
     GdprModule,
     FinancialModule,
+    PurchasesModule,
+    LinkingAccountsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, UploadService],

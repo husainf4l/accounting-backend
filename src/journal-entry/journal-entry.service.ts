@@ -90,121 +90,7 @@ export class JournalEntryService {
     });
   }
 
-  async createInvoiceJournalEntry(data: any, accounts: any, companyId: string) {
-    const InvoiceTypeCodeName = data.InvoiceTypeCodeName;
 
-    const transactions =
-      InvoiceTypeCodeName === '021'
-        ? [
-          {
-            accountId: data.clientId,
-            debit: data.taxInclusiveAmount,
-            credit: null,
-            currency: 'JO',
-            notes: 'Invoice payment received',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.salesTax.id,
-            debit: null,
-            credit: data.taxAmount,
-            currency: 'JO',
-            notes: 'Sales tax recorded',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.salesRevenue.id,
-            debit: null,
-            credit: data.taxExclusiveAmount,
-            currency: 'JO',
-            notes: 'Revenue recognized',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.cogs.id,
-            debit: accounts.totalCOGS,
-            credit: null,
-            currency: 'JO',
-            notes: 'Cost of goods sold recorded',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.inventoryAccount.id,
-            debit: null,
-            credit: accounts.totalCOGS,
-            currency: 'JO',
-            notes: 'Inventory reduced for sold items',
-            companyId: companyId,
-          },
-        ]
-        : [
-          {
-            accountId: data.cashAccountId,
-            debit: data.taxInclusiveAmount,
-            credit: null,
-            currency: 'JO',
-            notes: 'Invoice payment received',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.salesTax.id,
-            debit: null,
-            credit: data.taxAmount,
-            currency: 'JO',
-            notes: 'Sales tax recorded',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.salesRevenue.id,
-            debit: null,
-            credit: data.taxExclusiveAmount,
-            currency: 'JO',
-            notes: 'Revenue recognized',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.cogs.id,
-            debit: accounts.totalCOGS,
-            credit: null,
-            currency: 'JO',
-            notes: 'Cost of goods sold recorded',
-            companyId: companyId,
-          },
-          {
-            accountId: accounts.inventoryAccount.id,
-            debit: null,
-            credit: accounts.totalCOGS,
-            currency: 'JO',
-            notes: 'Inventory reduced for sold items',
-            companyId: companyId,
-          },
-        ];
-
-    const journalEntry = await this.prisma.journalEntry.create({
-      data: {
-        date: new Date(),
-        companyId: companyId,
-        transactions: {
-          create: transactions,
-        },
-      },
-      include: { transactions: true },
-    });
-
-    // Update the current balance for each account involved in the transactions
-
-
-    for (const transaction of transactions) {
-      await this.accountsService.updateCurrentBalance(
-        transaction.accountId,
-        transaction.debit || 0,
-        transaction.credit || 0,
-        companyId
-      );
-    }
-
-    return journalEntry;
-  }
 
 
 
@@ -273,5 +159,138 @@ export class JournalEntryService {
       transactionsCount: transactions.length,
     };
   }
+
+
+  async createInvoiceJournalEntry(data: any, accounts: any, companyId: string) {
+    // Validate accounts
+
+    if (!accounts.salesRevenue || !accounts.salesRevenue.id) {
+      throw new Error('Sales Revenue account is missing or invalid.');
+    }
+    if (!accounts.cogs || !accounts.cogs.id) {
+      throw new Error('COGS account is missing or invalid.');
+    }
+    if (!accounts.inventoryAccount || !accounts.inventoryAccount.id) {
+      throw new Error('Inventory account is missing or invalid.');
+    }
+    if (!accounts.salesTax || !accounts.salesTax.id) {
+      throw new Error('Sales Tax account is missing or invalid.');
+    }
+
+    const transactions = data.InvoiceTypeCodeName === '021'
+      ? [
+        {
+          accountId: data.clientId,
+          debit: data.taxInclusiveAmount,
+          credit: null,
+          currency: 'JO',
+          notes: 'Invoice payment received',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.salesTax.id,
+          debit: null,
+          credit: data.taxAmount,
+          currency: 'JO',
+          notes: 'Sales tax recorded',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.salesRevenue.id,
+          debit: null,
+          credit: data.taxExclusiveAmount,
+          currency: 'JO',
+          notes: 'Revenue recognized',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.cogs.id,
+          debit: accounts.totalCOGS,
+          credit: null,
+          currency: 'JO',
+          notes: 'Cost of goods sold recorded',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.inventoryAccount.id,
+          debit: null,
+          credit: accounts.totalCOGS,
+          currency: 'JO',
+          notes: 'Inventory reduced for sold items',
+          companyId: companyId,
+        },
+      ]
+      : [
+        {
+          accountId: data.cashAccountId,
+          debit: data.taxInclusiveAmount,
+          credit: null,
+          currency: 'JO',
+          notes: 'Invoice payment received',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.salesTax.id,
+          debit: null,
+          credit: data.taxAmount,
+          currency: 'JO',
+          notes: 'Sales tax recorded',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.salesRevenue.id,
+          debit: null,
+          credit: data.taxExclusiveAmount,
+          currency: 'JO',
+          notes: 'Revenue recognized',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.cogs.id,
+          debit: accounts.totalCOGS,
+          credit: null,
+          currency: 'JO',
+          notes: 'Cost of goods sold recorded',
+          companyId: companyId,
+        },
+        {
+          accountId: accounts.inventoryAccount.id,
+          debit: null,
+          credit: accounts.totalCOGS,
+          currency: 'JO',
+          notes: 'Inventory reduced for sold items',
+          companyId: companyId,
+        },
+      ];
+
+    console.log('Creating journal entry with transactions:', transactions);
+
+    // Create journal entry
+    const journalEntry = await this.prisma.journalEntry.create({
+      data: {
+        date: new Date(),
+        companyId: companyId,
+        transactions: {
+          create: transactions,
+        },
+      },
+      include: { transactions: true },
+    });
+
+    console.log('Journal entry created:', journalEntry);
+
+    // Update account balances
+    for (const transaction of transactions) {
+      await this.accountsService.updateCurrentBalance(
+        transaction.accountId,
+        transaction.debit || 0,
+        transaction.credit || 0,
+        companyId,
+      );
+    }
+
+    return journalEntry;
+  }
+
 
 }

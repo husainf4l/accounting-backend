@@ -1,22 +1,30 @@
-import { Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, Req, UseGuards } from '@nestjs/common';
 import { GeneralLedgerService } from './general-ledger.service';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('general-ledger')
 export class GeneralLedgerController {
-  constructor(private generalLedgerService: GeneralLedgerService) { }
+  constructor(private readonly generalLedgerService: GeneralLedgerService) { }
 
-  // @Get('accounts/:id/balance')
-  // async getAccountBalance(@Param('id') accountId: string) {
-  //   const balance = await this.generalLedgerService.getAccountBalance(accountId);
-  //   return { accountId, balance };
-  // }
+  @Post('create')
+  async createEntry(@Body() entryData: any) {
+    return this.generalLedgerService.createEntry(entryData);
+  }
 
-  // @UseGuards(AuthGuard('jwt'))
-  // @Post('update-balances')
-  // async updateBalances(@Req() req: any,) {
-  //   const companyId = req.user.companyId;
-  //   await this.generalLedgerService.updateGeneralLedger(companyId);
-  //   return { message: 'General ledger updated successfully!' };
-  // }
+  @UseGuards(AuthGuard('jwt'))
+  @Get()
+  async getLedgerEntries(
+    @Req() req: any,
+    @Query('accountId') accountId?: string,
+    @Query('customerId') customerId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const companyId = req.user.companyId;
+    return this.generalLedgerService.getLedgerEntries(companyId, {
+      accountId,
+      customerId,
+      dateRange: startDate && endDate ? { start: new Date(startDate), end: new Date(endDate) } : undefined,
+    });
+  }
 }

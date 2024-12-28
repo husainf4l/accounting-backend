@@ -1,14 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateClientDto } from './dto/CreateClientDto';
+import { GeneralLedger } from '@prisma/client';
+import { GeneralLedgerService } from 'src/general-ledger/general-ledger.service';
 
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService, private generalLedger: GeneralLedgerService) { }
 
-  /**
-   * Creates a new client and associates it with Accounts Receivable.
-   */
   async createClient(companyId: string, data: {
     name: string;
     email?: string;
@@ -110,7 +109,7 @@ export class ClientsService {
   }
 
   async ensureCustomerExists(clientId: string, clientName: string, companyId: string) {
-    console.log('Checking if customer exists');
+    console.log('Checking if customer exists', clientId);
     const existingCustomer = await this.prisma.customer.findUnique({
       where: { id: clientId },
     });
@@ -231,32 +230,35 @@ export class ClientsService {
 
 
   async getClientAccountStatement(clientId: string, companyId: string): Promise<any[]> {
+
+    const balance = await this.generalLedger.calculateRunningBalance(clientId)
+    console.log(balance)
+
     const transactions = await this.prisma.generalLedger.findMany({
       where: { customerId: clientId, companyId },
-      orderBy: { date: 'asc' }, // Sort by date
-      include: {
-        account: true,
-      },
+      orderBy: { date: 'asc' },
+      include: { account: true },
     });
 
     let runningBalance = 0;
 
-    // Map transactions to include running balance
     return transactions.map((transaction) => {
-      runningBalance += transaction.debit - transaction.credit;
+      runningBalance += (transaction.debit || 0) - (transaction.credit || 0);
       return {
         date: transaction.date,
         description: transaction.notes || 'No description',
         debit: transaction.debit,
         credit: transaction.credit,
-        runningBalance: runningBalance,
+        runningBalance,
       };
     });
   }
 
 
+
   async getClientDetails(clientId: string, companyId: string): Promise<any> {
-    // Fetch the client details from the database
+    const balance = await this.generalLedger.calculateRunningBalance(clientId)
+    console.log(balance)
     const client = await this.prisma.customer.findFirst({
       where: { id: clientId, companyId },
       include: {

@@ -34,7 +34,7 @@ export class GeneralLedgerService {
         debit,
         credit,
         companyId,
-        balance: 0, // Temporary, updated after creation
+        balance: 0, // Placeholder, will be updated
         notes: notes || '',
         date: date || new Date(),
       },
@@ -44,8 +44,8 @@ export class GeneralLedgerService {
     if (accountId) await this.updateAccountBalance(accountId, companyId, debit, credit);
     if (customerId) await this.updateCustomerBalance(customerId, debit, credit);
 
-    // Update the ledger entry with the correct running balance
-    const runningBalance = await this.calculateRunningBalance(companyId, ledgerEntry.accountId, ledgerEntry.customerId);
+    // Update running balance for the ledger entry
+    const runningBalance = await this.calculateRunningBalance(companyId, accountId, customerId);
     await this.prisma.generalLedger.update({
       where: { id: ledgerEntry.id },
       data: { balance: runningBalance },
@@ -54,9 +54,6 @@ export class GeneralLedgerService {
     return ledgerEntry;
   }
 
-  /**
-   * Get General Ledger entries with pagination for scalability.
-   */
   async getLedgerEntries(
     companyId: string,
     filter?: { accountId?: string; customerId?: string; dateRange?: { start: Date; end: Date }; page?: number; limit?: number }
@@ -73,7 +70,7 @@ export class GeneralLedgerService {
     }
 
     const page = filter?.page || 1;
-    const limit = filter?.limit || 100;
+    const limit = filter?.limit || 50; // Default limit for better performance
 
     return this.prisma.generalLedger.findMany({
       where,
@@ -90,27 +87,20 @@ export class GeneralLedgerService {
     });
   }
 
-  /**
-   * Update the balance for a customer in the General Ledger.
-   */
   private async updateCustomerBalance(customerId: string, debit: number, credit: number): Promise<void> {
     const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
 
     if (!customer) {
-      throw new Error('Customer not found');
+      throw new Error(`Customer with ID ${customerId} not found.`);
     }
 
-    // Update the customer's current balance
     await this.prisma.customer.update({
       where: { id: customerId },
       data: { currentBalance: customer.currentBalance + debit - credit },
     });
   }
 
-  /**
-   * Calculate the running balance for a specific account or customer.
-   */
-  private async calculateRunningBalance(companyId: string, accountId?: string, customerId?: string): Promise<number> {
+  async calculateRunningBalance(companyId: string, accountId?: string, customerId?: string): Promise<number> {
     const filter: any = { companyId };
 
     if (accountId) filter.accountId = accountId;
@@ -118,38 +108,25 @@ export class GeneralLedgerService {
 
     const result = await this.prisma.generalLedger.aggregate({
       where: filter,
-      _sum: {
-        debit: true,
-        credit: true,
-      },
+      _sum: { debit: true, credit: true },
     });
 
     return (result._sum.debit || 0) - (result._sum.credit || 0);
   }
 
-  /**
- * Update the balance for an account in the General Ledger.
- */
   private async updateAccountBalance(accountId: string, companyId: string, debit: number, credit: number): Promise<void> {
-    const account = await this.prisma.account.findUnique({
-      where: { id: accountId },
-    });
+    const account = await this.prisma.account.findUnique({ where: { id: accountId } });
 
     if (!account) {
-      throw new Error('Account not found');
+      throw new Error(`Account with ID ${accountId} not found.`);
     }
 
-    // Update the account's current balance
     await this.prisma.account.update({
       where: { id: accountId },
       data: { currentBalance: account.currentBalance + debit - credit },
     });
   }
 
-
-  /**
- * Update parent account balances for Accounts Receivable, Bank Accounts, and Accounts Payable.
- */
   async updateParentAccountBalances(companyId: string): Promise<void> {
     const parentAccounts = [
       { code: '1.1.3', entity: 'customerId' }, // Accounts Receivable
@@ -172,19 +149,10 @@ export class GeneralLedgerService {
     }
   }
 
-
-  async getAggregatedBalances(companyId: string, filters: { accountId?: string; customerId?: string; supplierId?: string; bankId?: string; expenseId?: string; }) {
+  async getAggregatedBalances(companyId: string, filters: Record<string, any>) {
     return this.prisma.generalLedger.aggregate({
-      where: {
-        companyId,
-        ...filters,
-      },
-      _sum: {
-        debit: true,
-        credit: true,
-      },
+      where: { companyId, ...filters },
+      _sum: { debit: true, credit: true },
     });
   }
-
-
 }

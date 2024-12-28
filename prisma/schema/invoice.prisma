@@ -1,3 +1,10 @@
+enum InvoiceStatus {
+  PENDING
+  SUBMITTED
+  PAID
+  CANCELLED
+}
+
 model Invoice {
   id                   String               @id @default(cuid())
   uuid                 String               @unique @default(dbgenerated("gen_random_uuid()"))
@@ -6,6 +13,7 @@ model Invoice {
   note                 String?
   documentCurrency     String               @default("JOD")
   taxCurrency          String               @default("JOD")
+  currencyExchangeRate Float?
   companyId            String
   customerId           String?
   taxExclusiveAmount   Float                @default(0.0)
@@ -15,20 +23,16 @@ model Invoice {
   employeeId           String?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime?            @updatedAt
-  sellerId             String?
-  buyerId              String?
   userId               String?
   isSubmitted          Boolean              @default(false)
   number               Int                  @unique
-  InvoiceTypeCodeName  String?              @default("011")
+  InvoiceTypeCodeName  String?              @default("012")
   additionalDocuments  AdditionalDocument[]
   billingReferences    BillingReference[]
   EINV                 EINV[]
-  Buyer                Buyer?               @relation(fields: [buyerId], references: [id])
   company              Company?             @relation(fields: [companyId], references: [id])
   customer             Customer?            @relation(fields: [customerId], references: [id])
   employee             Employee?            @relation(fields: [employeeId], references: [id])
-  Seller               Seller?              @relation(fields: [sellerId], references: [id])
   User                 User?                @relation(fields: [userId], references: [id])
   items                InvoiceItem[]
 
@@ -52,26 +56,6 @@ model BillingReference {
   originalUUID      String
   description       String?
   invoice           Invoice @relation(fields: [invoiceId], references: [id])
-}
-
-model Seller {
-  id          String    @id @default(cuid())
-  companyId   String    @unique
-  name        String
-  countryCode String    @default("JO")
-  invoices    Invoice[]
-}
-
-model Buyer {
-  id             String    @id @default(cuid())
-  identification String
-  schemeId       String
-  name           String
-  companyId      String
-  postalCode     String
-  countryCode    String    @default("JO")
-  phone          String?
-  invoices       Invoice[]
 }
 
 model InvoiceItem {
