@@ -7,6 +7,8 @@ import {
   UseGuards,
   Query,
   Body,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 import * as path from 'path';
@@ -14,6 +16,7 @@ import * as fs from 'fs';
 import { ProductService } from './product.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateProductDto } from './dto/CreateProductDto';
+import { UpdateInventoryDto } from './dto/update-inventory.dto';
 
 @Controller('product')
 export class ProductController {
@@ -111,5 +114,48 @@ export class ProductController {
   @Post('bulk')
   async createProducts(@Body('data') createProductDtos: CreateProductDto[]) {
     return this.productsService.createProducts(createProductDtos);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('update-inventory')
+  async updateInventory(
+    @Req() req: any,
+    @Body() updates: UpdateInventoryDto[],
+  ): Promise<void> {
+    const companyId = req.user.companyId;
+
+    for (const update of updates) {
+      const product = await this.productsService.findBySKU(
+        update.sku,
+        companyId,
+      );
+      if (!product) {
+        throw new NotFoundException(
+          `Product ${update.sku} not found for company ${companyId}`,
+        );
+      }
+
+      const totalCost = update.fifoLayers.reduce(
+        (sum, layer) => sum + layer.quantity * layer.costPerUnit,
+        0,
+      );
+
+      await this.productsService.updateProduct(
+        product,
+        companyId,
+        update.updatedQuantity,
+        totalCost,
+      );
+
+      for (const layer of update.fifoLayers) {
+        await this.productsService.logInventoryMovement(
+          product.id,
+          companyId,
+          'IN',
+          layer.quantity,
+          layer.costPerUnit,
+        );
+      }
+    }
   }
 }

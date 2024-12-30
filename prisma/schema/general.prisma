@@ -238,6 +238,7 @@ model Product {
   avgPrice            Float?                @default(0.0)
   stock               Int                   @default(0)
   reorderLevel        Int?
+  totalCost           Float                 @default(0.0) // Add this field
   isActive            Boolean               @default(true)
   origin              String?
   family              String?

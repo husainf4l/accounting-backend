@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import { CreateProductDto } from './dto/CreateProductDto';
+import { MovementType, Product } from '@prisma/client';
+import { UpdateInventoryDto } from './dto/update-inventory.dto';
 
 @Injectable()
 export class ProductService {
@@ -62,22 +64,7 @@ export class ProductService {
     return { success: true, insertedRows: result.length };
   }
 
-  async getProducts(companyId: string) {
-    const products = await this.prisma.product.findMany({
-      where: { companyId: companyId },
-      orderBy: { name: 'asc' },
-    });
 
-    const finalProducts = products.map((product) => {
-      const totalCost = product.costPrice * product.stock;
-      return {
-        ...product,
-        totalCost: totalCost.toFixed(3),
-      };
-    });
-
-    return finalProducts;
-  }
 
   async validateAndUpdateStock(invoiceItems: any[]) {
     let totalCOGS = 0;
@@ -169,20 +156,98 @@ export class ProductService {
     companyId: string,
     startDate?: string,
     endDate?: string,
-  ) {
+  ): Promise<any[]> {
+    // Fetch inventory including movements
     const inventory = await this.inventory(companyId, startDate, endDate);
 
-    // Format the inventory data for the report
-    const reportData = inventory.map((item) => ({
-      Name: item.name,
-      SKU: item.sku, // Use 'sku' as defined in the formattedInventory
-      Category: item.category,
-      Stock: item.stock,
-      Cost: item.costPrice,
-      TotalCost: (item.costPrice * item.stock).toFixed(2),
-    }));
+    const reportData = inventory.map((item) => {
+      // Ensure movements is an array
+      const movements = Array.isArray(item.movements) ? item.movements : [];
+
+      // Calculate opening balance (before startDate)
+      const openingBalance = movements.reduce((acc, movement) => {
+        if (
+          new Date(movement.createdAt) < new Date(startDate || '1970-01-01')
+        ) {
+          acc += movement.quantity;
+        }
+        return acc;
+      }, 0);
+
+      // Filter transactions within the report date range
+      const transactions = movements.filter((movement) => {
+        const movementDate = new Date(movement.createdAt);
+        return (
+          (!startDate || movementDate >= new Date(startDate)) &&
+          (!endDate || movementDate <= new Date(endDate))
+        );
+      });
+
+      // Calculate total in and total out within the report range
+      const totalIn = transactions.reduce(
+        (acc, movement) =>
+          movement.type === 'IN' ? acc + movement.quantity : acc,
+        0,
+      );
+      const totalOut = transactions.reduce(
+        (acc, movement) =>
+          movement.type === 'OUT' ? acc + movement.quantity : acc,
+        0,
+      );
+
+      // Closing balance
+      const closingBalance = openingBalance + totalIn - totalOut;
+
+      // Total cost based on FIFO valuation
+      const totalCost = this.calculateFIFO(movements, closingBalance);
+
+      return {
+        Name: item.name || 'Unnamed Item',
+        SKU: item.sku || 'N/A',
+        Category: item.category || 'Uncategorized',
+        OpeningBalance: openingBalance,
+        TotalIn: totalIn,
+        TotalOut: totalOut,
+        ClosingBalance: closingBalance,
+        CostPerUnit: (totalCost / closingBalance || 0).toFixed(2),
+        TotalCost: totalCost.toFixed(2),
+        ValuationMethod: item.valuationMethod || 'FIFO',
+        COGS: this.calculateCOGS(movements, totalOut).toFixed(2),
+      };
+    });
 
     return reportData;
+  }
+
+  private calculateFIFO(movements: any[], closingBalance: number): number {
+    let remainingBalance = closingBalance;
+    let totalCost = 0;
+
+    for (const movement of movements) {
+      if (movement.type === 'IN') {
+        const usedQuantity = Math.min(remainingBalance, movement.quantity);
+        totalCost += usedQuantity * movement.costPerUnit;
+        remainingBalance -= usedQuantity;
+        if (remainingBalance <= 0) break;
+      }
+    }
+
+    return totalCost;
+  }
+
+  private calculateCOGS(movements: any[], totalOut: number): number {
+    let remainingOut = totalOut;
+    let cogs = 0;
+
+    for (const movement of movements) {
+      if (movement.type === 'OUT' && remainingOut > 0) {
+        const usedQuantity = Math.min(remainingOut, movement.quantity);
+        cogs += usedQuantity * movement.costPerUnit;
+        remainingOut -= usedQuantity;
+      }
+    }
+
+    return cogs;
   }
 
   async getStockAlerts(companyId: string) {
@@ -270,4 +335,90 @@ export class ProductService {
       skipDuplicates: true,
     });
   }
+
+
+
+
+
+
+
+
+  async updateInventory(
+    updates: UpdateInventoryDto[],
+    companyId: string,
+  ): Promise<void> {
+    for (const update of updates) {
+      // Find product by SKU and companyId
+      const product = await this.findBySKU(update.sku, companyId);
+      if (!product) {
+        throw new NotFoundException(
+          `Product with SKU ${update.sku} not found for company ID ${companyId}`,
+        );
+      }
+
+      // Validate FIFO layers
+      if (!update.fifoLayers || update.fifoLayers.length === 0) {
+        throw new BadRequestException(
+          `Invalid FIFO layers for product with SKU ${update.sku}`,
+        );
+      }
+
+      // Calculate total cost using FIFO layers
+      const totalCost = this.calculateTotalCost(update.fifoLayers);
+
+      // Update product
+      await this.updateProduct(product, companyId, update.updatedQuantity, totalCost);
+    }
+  }
+  async logInventoryMovement(
+    productId: string,
+    companyId: string,
+    type: string,
+    quantity: number,
+    costPerUnit: number,
+  ): Promise<void> {
+    await this.prisma.inventoryMovement.create({
+      data: {
+        productId,
+        companyId,
+        type: MovementType.IN, // Use the enum directly
+        quantity,
+        costPerUnit,
+      },
+    });
+  }
+  
+  async findBySKU(sku: string, companyId: string): Promise<Product | null> {
+    return this.prisma.product.findFirst({
+      where: { barcode: sku, companyId },
+    });
+  }
+
+  async updateProduct(
+    product: Product,
+    companyId: string,
+    updatedQuantity: number,
+    totalCost: number,
+  ): Promise<Product> {
+    // Update product stock and cost price
+    return this.prisma.product.update({
+      where: { id: product.id },
+      data: {
+        stock: updatedQuantity,
+        costPrice: totalCost / updatedQuantity,
+      },
+    });
+  }
+
+  private calculateTotalCost(fifoLayers: { quantity: number; costPerUnit: number }[]): number {
+    return fifoLayers.reduce((sum, layer) => sum + layer.quantity * layer.costPerUnit, 0);
+  }
+
+  async getProducts(companyId: string) {
+    return this.prisma.product.findMany({
+      where: { companyId },
+      orderBy: { name: 'asc' },
+    });
+  }
+
 }
