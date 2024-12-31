@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class GeneralLedgerService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async createEntry(data: {
     accountId?: string;
@@ -17,10 +17,23 @@ export class GeneralLedgerService {
     notes?: string;
     date?: Date;
   }): Promise<any> {
-    const { accountId, customerId, supplierId, bankId, expenseId, debit, credit, companyId, notes, date } = data;
+    const {
+      accountId,
+      customerId,
+      supplierId,
+      bankId,
+      expenseId,
+      debit,
+      credit,
+      companyId,
+      notes,
+      date,
+    } = data;
 
     if (!accountId && !customerId && !supplierId && !bankId && !expenseId) {
-      throw new Error('At least one entity (account, customer, supplier, bank, or expense) must be specified.');
+      throw new Error(
+        'At least one entity (account, customer, supplier, bank, or expense) must be specified.',
+      );
     }
 
     // Create a General Ledger entry
@@ -41,11 +54,16 @@ export class GeneralLedgerService {
     });
 
     // Update balances
-    if (accountId) await this.updateAccountBalance(accountId, companyId, debit, credit);
+    if (accountId)
+      await this.updateAccountBalance(accountId, companyId, debit, credit);
     if (customerId) await this.updateCustomerBalance(customerId, debit, credit);
 
     // Update running balance for the ledger entry
-    const runningBalance = await this.calculateRunningBalance(companyId, accountId, customerId);
+    const runningBalance = await this.calculateRunningBalance(
+      companyId,
+      accountId,
+      customerId,
+    );
     await this.prisma.generalLedger.update({
       where: { id: ledgerEntry.id },
       data: { balance: runningBalance },
@@ -54,9 +72,49 @@ export class GeneralLedgerService {
     return ledgerEntry;
   }
 
+  async reconcileAllAccounts(companyId: string): Promise<void> {
+    // Fetch all accounts for the company
+    const accounts = await this.prisma.account.findMany({
+      where: { companyId },
+    });
+
+    for (const account of accounts) {
+      // Fetch all journal entries for the account
+      const { _sum: totals } = await this.prisma.transaction.aggregate({
+        where: {
+          companyId,
+          accountId: account.id,
+        },
+        _sum: {
+          debit: true,
+          credit: true,
+        },
+      });
+
+      // Sum of debits and credits
+      const totalDebit = totals.debit || 0;
+      const totalCredit = totals.credit || 0;
+
+      // Calculate the new balance
+      const newBalance = account.openingBalance + totalDebit - totalCredit;
+
+      // Update the account's current balance
+      await this.prisma.account.update({
+        where: { id: account.id },
+        data: { currentBalance: newBalance },
+      });
+    }
+  }
+
   async getLedgerEntries(
     companyId: string,
-    filter?: { accountId?: string; customerId?: string; dateRange?: { start: Date; end: Date }; page?: number; limit?: number }
+    filter?: {
+      accountId?: string;
+      customerId?: string;
+      dateRange?: { start: Date; end: Date };
+      page?: number;
+      limit?: number;
+    },
   ) {
     const where: any = { companyId };
 
@@ -87,8 +145,37 @@ export class GeneralLedgerService {
     });
   }
 
-  private async updateCustomerBalance(customerId: string, debit: number, credit: number): Promise<void> {
-    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+  async reconcileAccount(accountId: string, companyId: string): Promise<void> {
+    const { _sum: totals } = await this.prisma.generalLedger.aggregate({
+      where: { companyId, accountId },
+      _sum: {
+        debit: true,
+        credit: true,
+      },
+    });
+
+    const totalDebit = totals.debit || 0;
+    const totalCredit = totals.credit || 0;
+
+    const account = await this.prisma.account.findUnique({
+      where: { id: accountId },
+    });
+    const newBalance = account.openingBalance + totalDebit - totalCredit;
+
+    await this.prisma.account.update({
+      where: { id: accountId },
+      data: { currentBalance: newBalance },
+    });
+  }
+
+  private async updateCustomerBalance(
+    customerId: string,
+    debit: number,
+    credit: number,
+  ): Promise<void> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+    });
 
     if (!customer) {
       throw new Error(`Customer with ID ${customerId} not found.`);
@@ -100,7 +187,11 @@ export class GeneralLedgerService {
     });
   }
 
-  async calculateRunningBalance(companyId: string, accountId?: string, customerId?: string): Promise<number> {
+  async calculateRunningBalance(
+    companyId: string,
+    accountId?: string,
+    customerId?: string,
+  ): Promise<number> {
     const filter: any = { companyId };
 
     if (accountId) filter.accountId = accountId;
@@ -114,8 +205,15 @@ export class GeneralLedgerService {
     return (result._sum.debit || 0) - (result._sum.credit || 0);
   }
 
-  private async updateAccountBalance(accountId: string, companyId: string, debit: number, credit: number): Promise<void> {
-    const account = await this.prisma.account.findUnique({ where: { id: accountId } });
+  private async updateAccountBalance(
+    accountId: string,
+    companyId: string,
+    debit: number,
+    credit: number,
+  ): Promise<void> {
+    const account = await this.prisma.account.findUnique({
+      where: { id: accountId },
+    });
 
     if (!account) {
       throw new Error(`Account with ID ${accountId} not found.`);
@@ -130,17 +228,22 @@ export class GeneralLedgerService {
   async updateParentAccountBalances(companyId: string): Promise<void> {
     const parentAccounts = [
       { code: '1.1.3', entity: 'customerId' }, // Accounts Receivable
-      { code: '1.1.4', entity: 'bankId' },    // Bank Accounts
+      { code: '1.1.4', entity: 'bankId' }, // Bank Accounts
       { code: '2.1.1', entity: 'supplierId' }, // Accounts Payable
     ];
 
     for (const { code, entity } of parentAccounts) {
-      const parentAccount = await this.prisma.account.findFirst({ where: { companyId, code } });
+      const parentAccount = await this.prisma.account.findFirst({
+        where: { companyId, code },
+      });
       if (!parentAccount) continue;
 
-      const entityTotal = await this.getAggregatedBalances(companyId, { [entity]: { not: null } });
+      const entityTotal = await this.getAggregatedBalances(companyId, {
+        [entity]: { not: null },
+      });
 
-      const totalBalance = (entityTotal._sum.debit || 0) - (entityTotal._sum.credit || 0);
+      const totalBalance =
+        (entityTotal._sum.debit || 0) - (entityTotal._sum.credit || 0);
 
       await this.prisma.account.update({
         where: { id: parentAccount.id },

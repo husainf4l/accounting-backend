@@ -8,7 +8,7 @@ export class ChartOfAccountsService {
   constructor(
     private prisma: PrismaService,
     private generalLedger: GeneralLedgerService,
-  ) { }
+  ) {}
 
   // // Get all accounts
   // async getAllAccounts22(companyId: string): Promise<any[]> {
@@ -42,6 +42,8 @@ export class ChartOfAccountsService {
   // }
 
   async getAllAccounts(companyId: string): Promise<any[]> {
+    await this.generalLedger.reconcileAllAccounts(companyId);
+
     const accounts = await this.prisma.account.findMany({
       where: { companyId: companyId },
       select: {
@@ -446,13 +448,13 @@ export class ChartOfAccountsService {
           mainAccount: account.mainAccount,
           parentAccountId: parentAccount
             ? (
-              await this.prisma.account.findFirst({
-                where: {
-                  companyId: companyId,
-                  code: parentAccount.code,
-                },
-              })
-            )?.id
+                await this.prisma.account.findFirst({
+                  where: {
+                    companyId: companyId,
+                    code: parentAccount.code,
+                  },
+                })
+              )?.id
             : null,
           currentBalance: 0,
         },

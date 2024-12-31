@@ -15,7 +15,6 @@ import {
 export interface CreateProductDto {
   barcode?: string;
   name: string;
-  companyId: string;
   description?: string;
   costPrice?: number; // Change to number
   salesPrice?: number; // Change to number

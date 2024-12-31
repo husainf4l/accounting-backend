@@ -39,34 +39,35 @@ model BankDetails {
   GeneralLedger GeneralLedger[]
 }
 
-model Transaction {
-  id             String       @id @default(uuid())
-  accountId      String
-  journalEntryId String
-  debit          Float?
-  customerId     String?
-  customer       Customer?    @relation(fields: [customerId], references: [id])
-  companyId      String
-  credit         Float?
-  currency       String       @default("JOD")
-  notes          String?
-  createdAt      DateTime     @default(now())
-  account        Account      @relation(fields: [accountId], references: [id])
-  journalEntry   JournalEntry @relation("JournalEntryTransactions", fields: [journalEntryId], references: [id])
-
-  @@index([companyId])
-  @@index([companyId, createdAt])
-}
-
 model JournalEntry {
   id           String        @id @default(uuid())
   date         DateTime      @default(now())
   companyId    String
+  description  String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[] @relation("JournalEntryTransactions")
 
   @@index([companyId])
+}
+
+model Transaction {
+  id             String       @id @default(uuid())
+  accountId      String
+  journalEntryId String
+  debit          Float?
+  credit         Float?
+  currency       String       @default("JOD")
+  notes          String?
+  companyId      String
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  account        Account      @relation(fields: [accountId], references: [id])
+  journalEntry   JournalEntry @relation("JournalEntryTransactions", fields: [journalEntryId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([companyId])
+  @@index([companyId, createdAt])
 }
 
 model Customer {

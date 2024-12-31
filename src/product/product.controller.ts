@@ -81,23 +81,23 @@ export class ProductController {
     return this.productsService.inventory(companyId, startDate, endDate);
   }
 
-  @UseGuards(AuthGuard('jwt'))
-  @Post('inventory/export')
-  async exportInventoryReport(
-    @Req() req: any,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
-    const companyId = req.user.companyId;
-    const reportData = await this.productsService.generateReport(
-      companyId,
-      startDate,
-      endDate,
-    );
+  // @UseGuards(AuthGuard('jwt'))
+  // @Post('inventory/export')
+  // async exportInventoryReport(
+  //   @Req() req: any,
+  //   @Query('startDate') startDate?: string,
+  //   @Query('endDate') endDate?: string,
+  // ) {
+  //   const companyId = req.user.companyId;
+  //   const reportData = await this.productsService.generateReport(
+  //     companyId,
+  //     startDate,
+  //     endDate,
+  //   );
 
-    // Placeholder for file generation logic
-    return reportData;
-  }
+  //   // Placeholder for file generation logic
+  //   return reportData;
+  // }
 
   @UseGuards(AuthGuard('jwt'))
   @Get('stock-alerts')
@@ -106,14 +106,26 @@ export class ProductController {
     return this.productsService.getStockAlerts(companyId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post()
-  async createProduct(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.createProduct(createProductDto);
+  async createProduct(
+    @Body() createProductDto: CreateProductDto,
+    @Req() req: any,
+  ) {
+    const companyId = req.user.companyId;
+
+    return this.productsService.createProduct(createProductDto, companyId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('bulk')
-  async createProducts(@Body('data') createProductDtos: CreateProductDto[]) {
-    return this.productsService.createProducts(createProductDtos);
+  async createProducts(
+    @Body('data') createProductDtos: CreateProductDto[],
+    @Req() req: any,
+  ) {
+    const companyId = req.user.companyId;
+
+    return this.productsService.createProducts(createProductDtos, companyId);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -124,22 +136,33 @@ export class ProductController {
   ): Promise<void> {
     const companyId = req.user.companyId;
 
+    // Iterate through each update
     for (const update of updates) {
+      // Fetch the product by SKU and companyId
       const product = await this.productsService.findBySKU(
         update.sku,
         companyId,
       );
       if (!product) {
         throw new NotFoundException(
-          `Product ${update.sku} not found for company ${companyId}`,
+          `Product with SKU ${update.sku} not found for company ID ${companyId}.`,
         );
       }
 
+      // Validate FIFO layers before processing
+      if (!update.fifoLayers || update.fifoLayers.length === 0) {
+        throw new BadRequestException(
+          `FIFO layers are missing or invalid for product with SKU ${update.sku}.`,
+        );
+      }
+
+      // Calculate total cost based on FIFO layers
       const totalCost = update.fifoLayers.reduce(
         (sum, layer) => sum + layer.quantity * layer.costPerUnit,
         0,
       );
 
+      // Update product stock and cost in the database
       await this.productsService.updateProduct(
         product,
         companyId,
@@ -147,11 +170,12 @@ export class ProductController {
         totalCost,
       );
 
+      // Log inventory movements for each FIFO layer
       for (const layer of update.fifoLayers) {
         await this.productsService.logInventoryMovement(
           product.id,
           companyId,
-          'IN',
+          'IN', // Always 'IN' for inventory addition
           layer.quantity,
           layer.costPerUnit,
         );
