@@ -17,57 +17,42 @@ export class GeneralLedgerService {
     notes?: string;
     date?: Date;
   }): Promise<any> {
-    const {
-      accountId,
-      customerId,
-      supplierId,
-      bankId,
-      expenseId,
-      debit,
-      credit,
-      companyId,
-      notes,
-      date,
-    } = data;
-
-    if (!accountId && !customerId && !supplierId && !bankId && !expenseId) {
-      throw new Error(
-        'At least one entity (account, customer, supplier, bank, or expense) must be specified.',
-      );
-    }
-
-    // Create a General Ledger entry
+    // Create a journal entry
     const ledgerEntry = await this.prisma.generalLedger.create({
       data: {
-        accountId,
-        customerId,
-        supplierId,
-        bankId,
-        expenseId,
-        debit,
-        credit,
-        companyId,
-        balance: 0, // Placeholder, will be updated
-        notes: notes || '',
-        date: date || new Date(),
+        accountId: data.accountId,
+        customerId: data.customerId,
+        supplierId: data.supplierId,
+        bankId: data.bankId,
+        expenseId: data.expenseId,
+        debit: data.debit,
+        credit: data.credit,
+        companyId: data.companyId,
+        balance: 0, // Placeholder balance
+        notes: data.notes || '',
+        date: data.date || new Date(),
       },
     });
 
-    // Update balances
-    if (accountId)
-      await this.updateAccountBalance(accountId, companyId, debit, credit);
-    if (customerId) await this.updateCustomerBalance(customerId, debit, credit);
-
-    // Update running balance for the ledger entry
+    // Update the general ledger entry with its running balance
     const runningBalance = await this.calculateRunningBalance(
-      companyId,
-      accountId,
-      customerId,
+      data.companyId,
+      data.accountId,
+      data.customerId,
     );
+
     await this.prisma.generalLedger.update({
       where: { id: ledgerEntry.id },
-      data: { balance: runningBalance },
+      data: { balance: runningBalance }, // Update running balance
     });
+
+    // Update the account balance automatically after the journal entry
+    await this.updateAccountBalance(
+      data.accountId,
+      data.companyId,
+      data.debit,
+      data.credit,
+    );
 
     return ledgerEntry;
   }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { GeneralLedgerService } from 'src/general-ledger/general-ledger.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { parseISO, formatISO } from 'date-fns';
@@ -10,7 +10,7 @@ export class AccountsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly generalLedgerService: GeneralLedgerService,
-  ) { }
+  ) {}
 
   async getAccountStatement(
     accountId: string,
@@ -21,47 +21,35 @@ export class AccountsService {
     endDate?: string,
   ) {
     const offset = (page - 1) * limit;
-
-    // Parse dates to ISO format
     const startDateISO = startDate ? formatISO(parseISO(startDate)) : undefined;
     const endDateISO = endDate ? formatISO(parseISO(endDate)) : undefined;
 
-    // Fetch account details
     const accountDetails = await this.prisma.account.findUnique({
       where: { id: accountId, companyId },
     });
 
-    if (!accountDetails) {
-      throw new Error(`Account with ID ${accountId} not found`);
-    }
+    if (!accountDetails)
+      throw new NotFoundException(`Account with ID ${accountId} not found`);
 
-    // Calculate opening balance
     let openingBalance = accountDetails.openingBalance || 0;
-
     if (startDateISO) {
       const priorEntries = await this.prisma.generalLedger.findMany({
         where: {
           accountId,
-          date: { lt: new Date(startDateISO) }, // Entries before the start date
+          date: { lt: new Date(startDateISO) },
           companyId,
         },
       });
-
       openingBalance += priorEntries.reduce(
-        (balance, entry) =>
-          balance + (entry.debit || 0) - (entry.credit || 0),
+        (balance, entry) => balance + (entry.debit || 0) - (entry.credit || 0),
         0,
       );
     }
 
-    // Fetch ledger entries within the date range
     const ledgerFilters: any = { accountId, companyId };
     if (startDateISO) ledgerFilters.date = { gte: new Date(startDateISO) };
     if (endDateISO)
-      ledgerFilters.date = {
-        ...ledgerFilters.date,
-        lte: new Date(endDateISO),
-      };
+      ledgerFilters.date = { ...ledgerFilters.date, lte: new Date(endDateISO) };
 
     const ledgerEntries = await this.prisma.generalLedger.findMany({
       where: ledgerFilters,
@@ -70,14 +58,11 @@ export class AccountsService {
       take: limit,
     });
 
-    // Count total ledger entries for pagination
     const totalEntries = await this.prisma.generalLedger.count({
       where: ledgerFilters,
     });
-
     const totalPages = Math.ceil(totalEntries / limit);
 
-    // Calculate running balance for ledger entries
     let runningBalance = openingBalance;
     const entriesWithBalance = ledgerEntries.map((entry) => {
       runningBalance += entry.debit || 0;
@@ -85,31 +70,14 @@ export class AccountsService {
       return { ...entry, runningBalance };
     });
 
-    // Construct response
-    const response = {
-      accountDetails: {
-        ...accountDetails,
-        openingBalance,
-      },
+    return {
+      accountDetails: { ...accountDetails, openingBalance },
       transactions: entriesWithBalance,
-      pagination: {
-        totalRecords: totalEntries,
-        currentPage: page,
-        totalPages,
-      },
-      filters: {
-        startDate: startDate || null,
-        endDate: endDate || null,
-      },
-      message:
-        totalEntries === 0
-          ? 'No transactions found for the given account and date range.'
-          : null,
+      pagination: { totalRecords: totalEntries, currentPage: page, totalPages },
+      filters: { startDate: startDate || null, endDate: endDate || null },
+      message: totalEntries === 0 ? 'No transactions found' : null,
     };
-
-    return response;
   }
-
 
   async getCriticalAccounts(companyId: string, codes: string | string[] = []) {
     const codeArray = Array.isArray(codes) ? codes : [codes];
@@ -168,71 +136,49 @@ export class AccountsService {
     companyId: string,
     data: {
       name: string;
-      nameAr?: string;
       accountType: $Enums.AccountType;
       openingBalance?: number;
-      parentAccountId: string; // Required as all accounts must have a parent
-      level?: number;
-      ifrcClassification?: string | null;
+      parentAccountId: string; // The parent account must be passed for hierarchy
     },
   ) {
-    const {
-      name,
-      nameAr = null,
-      accountType,
-      openingBalance = 0,
-      parentAccountId,
-      level = null,
-      ifrcClassification = null,
-    } = data;
-
-    // Ensure parent account exists
     const parentAccount = await this.prisma.account.findUnique({
-      where: { id: parentAccountId },
+      where: { id: data.parentAccountId },
     });
 
     if (!parentAccount) {
-      throw new Error(`Parent account with ID ${parentAccountId} not found`);
+      throw new Error(
+        `Parent account with ID ${data.parentAccountId} not found`,
+      );
     }
 
-    // Generate account code dynamically
+    // Generate the new account code dynamically based on the parent account
     const maxSubAccount = await this.prisma.account.findFirst({
-      where: { companyId, parentAccountId },
+      where: { companyId, parentAccountId: data.parentAccountId },
       orderBy: { code: 'desc' },
     });
 
     const subCode = maxSubAccount
       ? (
-        parseInt(maxSubAccount.code.split('.').pop() || '0', 10) + 1
-      ).toString()
+          parseInt(maxSubAccount.code.split('.').pop() || '0', 10) + 1
+        ).toString()
       : '1';
 
     const code = `${parentAccount.code}.${subCode}`;
 
-    // Prepare account data
-    const accountData: any = {
-      name,
-      nameAr,
-      accountType,
-      openingBalance,
-      currentBalance: openingBalance,
-      mainAccount: false, // Sub-accounts cannot be main accounts
+    const accountData = {
+      name: data.name,
+      accountType: data.accountType,
+      openingBalance: data.openingBalance || 0,
+      currentBalance: data.openingBalance || 0,
       code,
       companyId,
-      parentAccountId,
-      level: parentAccount.level !== null ? parentAccount.level + 1 : null, // Increment level from parent
-      ifrcClassification,
+      parentAccountId: data.parentAccountId,
     };
 
-    // Create account
-    const newAccount = await this.prisma.account.create({
+    return await this.prisma.account.create({
       data: accountData,
     });
-
-    return newAccount;
   }
-
-
 
   async bulkCreate(createAccountDtos: CreateAccountDto[], companyId: string) {
     const results: any[] = [];
@@ -334,10 +280,28 @@ export class AccountsService {
     }
   }
 
-
   async getAllAccounts(companyId: string) {
-    return this.prisma.account.findMany(
-      { where: { companyId: companyId } }
-    )
+    return this.prisma.account.findMany({ where: { companyId: companyId } });
+  }
+
+  async getLinkedAccounts(companyId: string, roles: string[]): Promise<any> {
+    const linkedAccounts = await this.prisma.linkedAccount.findMany({
+      where: {
+        companyId: companyId,
+        role: { in: roles }, // Ensure roles are correctly matched
+      },
+      include: { account: true }, // Include the associated account details
+    });
+
+    // Log the linked accounts to ensure the accounts are returned correctly
+    console.log('Fetched linked accounts:', linkedAccounts);
+
+    // Return the accounts as a map by role name
+    const accountMap = linkedAccounts.reduce((acc, linkedAccount) => {
+      acc[linkedAccount.role] = linkedAccount.account; // Map role to account
+      return acc;
+    }, {});
+
+    return accountMap;
   }
 }

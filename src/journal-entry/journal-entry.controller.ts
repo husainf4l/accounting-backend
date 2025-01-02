@@ -9,15 +9,15 @@ import {
   UsePipes,
   ValidationPipe,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { JournalEntryService } from './journal-entry.service';
-import { Prisma } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateJournalDto } from './dto/create-journal.dto';
 
 @Controller('journal-entry')
 export class JournalEntryController {
-  constructor(private readonly journalEntryService: JournalEntryService) { }
+  constructor(private readonly journalEntryService: JournalEntryService) {}
 
   @UseGuards(AuthGuard('jwt'))
   @Post()
@@ -44,10 +44,7 @@ export class JournalEntryController {
     }
 
     // Calculate total debit and credit
-    const totalDebit = transactions.reduce(
-      (sum, t) => sum + (t.debit || 0),
-      0,
-    );
+    const totalDebit = transactions.reduce((sum, t) => sum + (t.debit || 0), 0);
     const totalCredit = transactions.reduce(
       (sum, t) => sum + (t.credit || 0),
       0,
@@ -101,11 +98,34 @@ export class JournalEntryController {
     const companyId = req.user.companyId;
 
     if (!companyId) {
-      throw new BadRequestException('Company ID is missing from the user payload.');
+      throw new BadRequestException(
+        'Company ID is missing from the user payload.',
+      );
     }
 
     return this.journalEntryService.createBulk(entries, companyId);
   }
 
+  @Post('backfill-numbers')
+  async backfillJournalNumbers(
+    @Query('batchSize') batchSize?: string,
+    @Query('companyId') companyId?: string,
+    @Body() body?: any,
+  ) {
+    console.log('00000000000000000000000');
+    const batchSizeNumber = batchSize ? parseInt(batchSize, 10) : 100;
+    if (isNaN(batchSizeNumber) || batchSizeNumber <= 0) {
+      throw new Error('Invalid batch size. Must be a positive number.');
+    }
 
+    if (companyId) {
+      await this.journalEntryService.backfillJournalNumbersForCompany(
+        companyId,
+        batchSizeNumber,
+      );
+      return {
+        message: `Journal numbers backfilled successfully for company ${companyId}.`,
+      };
+    }
+  }
 }

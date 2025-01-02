@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JournalEntryService } from './journal-entry.service';
 import { JournalEntryController } from './journal-entry.controller';
-import { AccountsService } from 'src/accounts/accounts.service';
 import { AccountsModule } from 'src/accounts/accounts.module';
 
 @Module({
@@ -10,4 +9,4 @@ import { AccountsModule } from 'src/accounts/accounts.module';
   controllers: [JournalEntryController],
   exports: [JournalEntryService],
 })
-export class JournalEntryModule { }
+export class JournalEntryModule {}

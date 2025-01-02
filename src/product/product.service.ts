@@ -8,12 +8,15 @@ import { UploadService } from 'src/upload/upload.service';
 import { CreateProductDto } from './dto/CreateProductDto';
 import { MovementType, Product } from '@prisma/client';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
+import { JournalEntryService } from 'src/journal-entry/journal-entry.service';
 
 @Injectable()
 export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
+    private readonly journalEntryService: JournalEntryService, // Inject JournalEntryService
+
   ) {}
 
   async uploadProducts(filePath: string, companyId: string): Promise<any> {
@@ -308,8 +311,10 @@ export class ProductService {
       );
     }
 
+    const totalCost = quantity * costPerUnit;
+
     // Log the inventory movement
-    const movement = await this.prisma.inventoryMovement.create({
+    await this.prisma.inventoryMovement.create({
       data: {
         productId,
         companyId,
@@ -319,14 +324,13 @@ export class ProductService {
       },
     });
 
-    // Log the corresponding journal entry
-    const totalCost = quantity * costPerUnit;
+    // Get linked accounts
     const linkedAccounts = await this.prisma.linkedAccount.findMany({
       where: {
         companyId,
-        role: { in: ['Inventory', 'Opening Balance Equity'] }, // Adjust roles as necessary
+        role: { in: ['Inventory', 'Opening Balance Equity'] },
       },
-      include: { account: true }, // Ensure account details are included
+      include: { account: true },
     });
 
     const inventoryAccount = linkedAccounts.find(
@@ -343,32 +347,29 @@ export class ProductService {
       );
     }
 
-    // Create journal entry
-    await this.prisma.journalEntry.create({
-      data: {
-        companyId,
-        description: `Inventory movement (${type}) for Product ID: ${productId}`,
-        transactions: {
-          create: [
-            {
-              accountId:
-                type === 'IN' ? inventoryAccount.id : inventoryAccount.id,
-              debit: type === 'IN' ? totalCost : null,
-              credit: type === 'OUT' ? totalCost : null,
-              companyId,
-            },
-            {
-              accountId:
-                type === 'IN' ? openingBalanceAccount.id : inventoryAccount.id,
-              debit: type === 'OUT' ? totalCost : null,
-              credit: type === 'IN' ? totalCost : null,
-              companyId,
-            },
-          ],
+    // Prepare journal entry data
+    const journalData = {
+      date: new Date(),
+      transactions: [
+        {
+          accountId: inventoryAccount.id,
+          debit: type === 'IN' ? totalCost : null,
+          credit: type === 'OUT' ? totalCost : null,
+          companyId,
         },
-      },
-    });
+        {
+          accountId: openingBalanceAccount.id,
+          debit: type === 'OUT' ? totalCost : null,
+          credit: type === 'IN' ? totalCost : null,
+          companyId,
+        },
+      ],
+    };
+
+    // Use JournalEntryService to log journal entry
+    await this.journalEntryService.createJournalEntry(companyId, journalData);
   }
+
 
   async updateInventory(
     updates: UpdateInventoryDto[],
